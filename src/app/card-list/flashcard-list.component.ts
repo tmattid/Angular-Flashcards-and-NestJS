@@ -2,7 +2,7 @@ import { Component, inject, Input, TrackByFunction } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { CdkDragDrop, transferArrayItem } from '@angular/cdk/drag-drop'
 import { DragDropModule } from '@angular/cdk/drag-drop'
-import { Flashcard } from '../models/flashcards.models'
+import { Flashcard } from '../api'
 import { FlashcardCDKService } from '../ai-chat/services/flashcard-cdk-service.service'
 import { ThemeService } from '../services/theme.service'
 import { FlashcardService } from '../services/flashcard-http.service'
@@ -10,11 +10,9 @@ import { signal } from '@angular/core'
 import { AuthService } from '../services/auth.service'
 import { environment } from '../../environments/environment'
 import { firstValueFrom } from 'rxjs'
-import {
-  LocalStorageService,
-  LocalStorageState,
-} from '../services/state/local-storage.service'
-import { ValidatedFlashcardSet } from '../models/flashcards.models'
+import { LocalStorageService } from '../services/state/local-storage.service'
+import { LocalStorageState } from '../models/state.models'
+import { FlashcardSetWithCards } from '../api'
 
 @Component({
   selector: 'app-flashcard-list',
@@ -589,7 +587,7 @@ export class FlashcardListComponent {
     this.localStorageService.updateState((state: LocalStorageState) => {
       const updatedState = {
         ...state,
-        flashcardSets: state.flashcardSets.map((set: ValidatedFlashcardSet) => {
+        flashcardSets: state.flashcardSets.map((set: FlashcardSetWithCards) => {
           if (set.id === selectedSetId) {
             // Update positions based on current order
             const updatedFlashcards = cards.map((card, index) => ({
@@ -633,7 +631,6 @@ export class FlashcardListComponent {
 
   cleanupDuplicates(): void {
     this.localStorageService.cleanupDuplicates()
-    this.flashcardCDKService.cleanupDuplicateSets()
     alert('Duplicate sets have been removed.')
   }
 

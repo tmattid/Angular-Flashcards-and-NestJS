@@ -29,10 +29,7 @@ import { ThemeService } from '../../services/theme.service'
 import { AgGridConfigService } from '../ag-grid-config.service'
 import { IconCellRendererComponent } from '../cell-renderer/icon-cell-renderer.component'
 import { IconCellEditorComponent } from '../cell-editor/icon-cell-editor.component'
-import {
-  ValidatedFlashcardSet,
-  Flashcard,
-} from '../../models/flashcards.models'
+import { FlashcardSetWithCards, Flashcard } from '../../api'
 import { AuthService } from '../../services/auth.service'
 import { firstValueFrom } from 'rxjs'
 
@@ -197,7 +194,7 @@ export class SetManagementGridComponent implements OnInit {
   }
 
   detailCellRendererParams: IDetailCellRendererParams<
-    ValidatedFlashcardSet,
+    FlashcardSetWithCards,
     Flashcard
   > = {
     detailGridOptions: {
@@ -233,7 +230,7 @@ export class SetManagementGridComponent implements OnInit {
     getDetailRowData: (params) => {
       params.successCallback(params.data.flashcards)
     },
-  } as IDetailCellRendererParams<ValidatedFlashcardSet, Flashcard>
+  } as IDetailCellRendererParams<FlashcardSetWithCards, Flashcard>
 
   ngOnInit() {
     // Initialize grid data from localStorage
@@ -356,15 +353,16 @@ export class SetManagementGridComponent implements OnInit {
       const newSetId = crypto.randomUUID()
 
       // Create a new set with default values
-      const newSet: ValidatedFlashcardSet = {
+      const newSet: FlashcardSetWithCards = {
         id: newSetId,
         title: 'New Set',
         description: 'Your flashcard collection',
-        created_at: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
         flashcards: [],
-        icon_id: 'tuiIconBook',
-        set_position: this.localStorageService.getState().flashcardSets.length,
-        updated_at: new Date().toISOString(),
+        iconId: 'tuiIconBook',
+        setPosition: this.localStorageService.getState().flashcardSets.length,
+        updatedAt: new Date().toISOString(),
+        createdBy: this.authService.user()?.id ?? 'local-user',
       }
 
       // Add the new set to localStorage

@@ -7,7 +7,7 @@ import {
   Validators,
 } from '@angular/forms'
 import { LocalStorageService } from '../services/state/local-storage.service'
-import { Flashcard, FlashcardSetWithCards } from '../models/flashcards.models'
+import { Flashcard, FlashcardSetWithCards } from '../api'
 import { FlashcardFormComponent } from './components/flashcard-form.component'
 import { FlashcardTableComponent } from './components/flashcard-table.component'
 
@@ -102,15 +102,15 @@ export class FlashcardCreatePage implements OnInit {
   ): void {
     const fullCard: Flashcard = {
       ...card,
-      flashcard_set_id: this.selectedFlashcardSet()?.id ?? '',
+      setId: this.selectedFlashcardSet()?.id ?? '',
       position: card.position ?? 0,
     }
     this.selectedCard.set(fullCard)
     this.flashcardForm.patchValue({
-      flashcardSetId: fullCard.flashcard_set_id,
+      flashcardSetId: fullCard.setId,
       front: fullCard.front,
       back: fullCard.back,
-      difficulty: fullCard.difficulty,
+      difficulty: fullCard.difficulty?.['value'] ?? null,
       tags: fullCard.tags?.join(', ') ?? '',
     })
   }
@@ -157,18 +157,18 @@ export class FlashcardCreatePage implements OnInit {
 
     const newFlashcard: Flashcard = {
       id: crypto.randomUUID(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      flashcard_set_id: flashcardSetId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      setId: flashcardSetId,
       front,
       back,
-      difficulty: difficulty ?? null,
+      difficulty: difficulty ? { value: difficulty } : undefined,
       tags: tags
         ? tags
             .split(',')
             .map((tag: string) => tag.trim())
             .filter((tag: string) => tag.length > 0)
-        : null,
+        : undefined,
       position: nextPosition,
     }
 

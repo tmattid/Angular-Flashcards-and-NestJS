@@ -1,10 +1,12 @@
-import { Injectable, signal } from '@angular/core'
-import { FlashcardSetWithCards } from '../models/flashcards.models'
+import { Injectable, inject, signal } from '@angular/core'
+import { FlashcardSetWithCards } from '../api'
+import { FlashcardCDKService } from '../ai-chat/services/flashcard-cdk-service.service'
 
 @Injectable({
   providedIn: 'root',
 })
 export class SetSelectionService {
+  private readonly flashcardService = inject(FlashcardCDKService)
   private selectedSet = signal<FlashcardSetWithCards | null>(null)
   private isManagingSet = signal(false)
 
@@ -14,6 +16,7 @@ export class SetSelectionService {
 
   setSelectedSet(set: FlashcardSetWithCards | null): void {
     this.selectedSet.set(set)
+    
   }
 
   getIsManagingSet(): boolean {

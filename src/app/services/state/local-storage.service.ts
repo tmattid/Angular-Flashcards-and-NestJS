@@ -1,32 +1,25 @@
 import { Injectable, signal } from '@angular/core'
-import {
-  FlashcardSetWithCards,
-  StateUpdater,
-  ValidatedFlashcard,
-  ValidatedFlashcardSet,
-} from '../../models/flashcards.models'
-
-export interface LocalStorageState {
-  readonly flashcardSets: ValidatedFlashcardSet[]
-}
+import { Flashcard, FlashcardSetWithCards } from '../../api'
+import { LocalStorageState, StateUpdater } from '../../models/state.models'
 
 @Injectable({
   providedIn: 'root',
 })
 export class LocalStorageService {
-  private readonly STORAGE_KEY = 'flashcard_data'
+  private readonly STORAGE_KEY = 'flashcard_app_state'
   private readonly DIRTY_KEY = 'dirty_items'
   public readonly state = signal<LocalStorageState>({
+    isDarkMode: false,
+    isCardView: false,
+    hasCompletedTutorial: false,
+    isFirstVisit: true,
     flashcardSets: [],
+    currentSetId: null,
   })
   private dirtyItems = signal<ReadonlyArray<string>>([])
 
   constructor() {
-    const saved = localStorage.getItem(this.STORAGE_KEY)
-    if (saved) {
-      const parsed = JSON.parse(saved) as LocalStorageState
-      this.validateAndSetState(parsed)
-    }
+    this.loadFromStorage()
   }
 
   /**
@@ -70,19 +63,23 @@ export class LocalStorageService {
 
   // Legacy methods below for backward compatibility
 
-  private validateAndSetState(state: LocalStorageState): void {
-    // Ensure all cards have positions and set IDs
+  private validateAndSetState(state: Partial<LocalStorageState>): void {
     const validatedState: LocalStorageState = {
-      flashcardSets: state.flashcardSets.map((set) => ({
-        ...set,
-        flashcards: set.flashcards.map(
-          (card, index): ValidatedFlashcard => ({
+      isDarkMode: state.isDarkMode ?? false,
+      isCardView: state.isCardView ?? false,
+      hasCompletedTutorial: state.hasCompletedTutorial ?? false,
+      isFirstVisit: state.isFirstVisit ?? true,
+      currentSetId: state.currentSetId ?? null,
+      flashcardSets: (state.flashcardSets ?? []).map(
+        (set: FlashcardSetWithCards) => ({
+          ...set,
+          flashcards: set.flashcards.map((card: Flashcard, index: number) => ({
             ...card,
             position: index,
-            flashcard_set_id: set.id,
-          }),
-        ),
-      })),
+            setId: set.id,
+          })),
+        }),
+      ),
     }
     this.state.set(validatedState)
   }
@@ -92,20 +89,22 @@ export class LocalStorageService {
   }
 
   updateState(updater: StateUpdater): void {
-    this.state.update((current) => {
+    this.state.update((current: LocalStorageState) => {
       const newState = updater(current)
-      // Validate and ensure position tracking
       const validatedState: LocalStorageState = {
-        flashcardSets: newState.flashcardSets.map((set) => ({
-          ...set,
-          flashcards: set.flashcards.map(
-            (card, index): ValidatedFlashcard => ({
-              ...card,
-              position: index,
-              flashcard_set_id: set.id,
-            }),
-          ),
-        })),
+        ...newState,
+        flashcardSets: newState.flashcardSets.map(
+          (set: FlashcardSetWithCards) => ({
+            ...set,
+            flashcards: set.flashcards.map(
+              (card: Flashcard, index: number) => ({
+                ...card,
+                position: index,
+                setId: set.id,
+              }),
+            ),
+          }),
+        ),
       }
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(validatedState))
       return validatedState
@@ -129,39 +128,62 @@ export class LocalStorageService {
   }
 
   loadFromApi(apiResponse: FlashcardSetWithCards[]): void {
-    this.updateState(() => ({
-      flashcardSets: apiResponse.map((set) => ({
+    this.updateState((current: LocalStorageState) => ({
+      ...current,
+      flashcardSets: apiResponse.map((set: FlashcardSetWithCards) => ({
         ...set,
-        flashcards: set.flashcards.map(
-          (card, index): ValidatedFlashcard => ({
-            ...card,
-            position: index,
-            flashcard_set_id: set.id,
-          }),
-        ),
+        flashcards: set.flashcards.map((card: Flashcard, index: number) => ({
+          ...card,
+          position: index,
+          setId: set.id,
+        })),
       })),
     }))
 
-    // Also save to the new format
     this.setItem('flashcardSets', apiResponse)
   }
 
   removeSet(setId: string): void {
-    this.updateState((current) => ({
-      flashcardSets: current.flashcardSets.filter((set) => set.id !== setId),
+    this.updateState((current: LocalStorageState) => ({
+      ...current,
+      flashcardSets: current.flashcardSets.filter(
+        (set: FlashcardSetWithCards) => set.id !== setId,
+      ),
     }))
   }
 
   resetState(): void {
-    this.state.set({ flashcardSets: [] })
+    this.state.set({
+      isDarkMode: false,
+      isCardView: false,
+      hasCompletedTutorial: false,
+      isFirstVisit: true,
+      flashcardSets: [],
+      currentSetId: null,
+    })
     this.clear()
   }
 
   cleanupDuplicates(): void {
-    this.updateState((current) => ({
+    this.updateState((current: LocalStorageState) => ({
+      ...current,
       flashcardSets: current.flashcardSets.filter(
-        (set, index, self) => index === self.findIndex((s) => s.id === set.id),
+        (
+          set: FlashcardSetWithCards,
+          index: number,
+          self: Array<FlashcardSetWithCards>,
+        ) =>
+          index ===
+          self.findIndex((s: FlashcardSetWithCards) => s.id === set.id),
       ),
     }))
+  }
+
+  private loadFromStorage(): void {
+    const saved = localStorage.getItem(this.STORAGE_KEY)
+    if (saved) {
+      const parsed = JSON.parse(saved) as LocalStorageState
+      this.validateAndSetState(parsed)
+    }
   }
 }

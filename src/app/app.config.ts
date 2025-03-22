@@ -17,6 +17,7 @@ import { providePrimeNG } from 'primeng/config'
 import { definePreset } from '@primeng/themes'
 import Aura from '@primeng/themes/aura'
 import { authInterceptor } from './auth/auth.interceptor'
+import { ApiConfigService } from './api/api-config.service'
 
 const Noir = definePreset(Aura, {
   semantic: {
@@ -85,7 +86,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes, withViewTransitions(), withComponentInputBinding()),
-    provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
+    provideHttpClient(withInterceptors([authInterceptor]), withFetch()),
     provideAnimationsAsync(),
     providePrimeNG({
       theme: {
@@ -96,5 +97,8 @@ export const appConfig: ApplicationConfig = {
       },
     }),
     NG_EVENT_PLUGINS,
+    //intercept the request
+
+    ApiConfigService,
   ],
 }

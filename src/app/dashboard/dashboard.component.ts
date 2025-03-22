@@ -1,4 +1,4 @@
-import { Component, inject, effect, signal } from '@angular/core'
+import { Component, inject, effect, signal, OnInit } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { Router } from '@angular/router'
 import { AuthService } from '../services/auth.service'
@@ -13,6 +13,7 @@ import { FlashcardSetSelectorComponent } from '../flashcard-set-selection/flashc
 import { TabSelectorComponent } from './components/tab-selector.component'
 import { FlashcardListComponent } from '../card-list/flashcard-list.component'
 import { SetSelectionService } from '../services/set-selection.service'
+import { FlashcardCDKService } from '../ai-chat/services/flashcard-cdk-service.service'
 
 type Tab = 'grid' | 'flashcard-list' | 'profile'
 
@@ -28,7 +29,7 @@ type Tab = 'grid' | 'flashcard-list' | 'profile'
     AiChatComponent,
     FlashcardListComponent,
     FlashcardSetSelectorComponent,
-    TabSelectorComponent,
+
     FlashcardListComponent,
   ],
   template: `
@@ -36,15 +37,14 @@ type Tab = 'grid' | 'flashcard-list' | 'profile'
       <app-dashboard-nav
         [userEmail]="user()?.email || ''"
         (signOut)="signOut()"
+        (tabChange)="changeTab($event)"
       ></app-dashboard-nav>
 
       <div class="dashboard-container">
         <!-- Left Column - AI Chat -->
         @if (!editSetService.getIsManagingSet()) {
           <div class="chat-column gap-2 flex flex-col bg-gray-1 border p-2 border-gray-300 rounded-lg">
-            <app-tab-selector
-              (tabChange)="activeTab.set($event)"
-            />
+
             <app-flashcard-set-selector [activeTab]="activeTab()" />
             <app-ai-chat [activeTab]="activeTab()"></app-ai-chat>
           </div>
@@ -106,11 +106,11 @@ type Tab = 'grid' | 'flashcard-list' | 'profile'
     `,
   ],
 })
-export class DashboardComponent {
+export class DashboardComponent implements OnInit {
   private readonly auth = inject(AuthService)
+  private readonly flashcardService = inject(FlashcardCDKService)
   readonly editSetService = inject(SetSelectionService)
   private readonly router = inject(Router)
-  // private flashcardService = inject(FlashcardService);
   protected readonly user = this.auth.user
   protected readonly tabs: Tab[] = [
     'grid',
@@ -118,6 +118,11 @@ export class DashboardComponent {
     'profile',
   ] as const
   protected readonly activeTab = signal<number>(0)
+
+  async ngOnInit(): Promise<void> {
+    // Load flashcards when dashboard initializes
+    await this.flashcardService.loadFlashcardSets()
+  }
 
   /**
    * Handles tab changes. If the clicked tab differs from the current value,

@@ -1,102 +1,141 @@
 import { Injectable, inject, signal, computed } from '@angular/core'
-import { LocalStorageService } from '../../services/state/local-storage.service'
 import {
   Flashcard,
   FlashcardSetWithCards,
-} from '../../models/flashcards.models'
-import { Observable, of } from 'rxjs'
+  CreateFlashcardSetDto,
+  CreateFlashcardDto,
+  UpdateFlashcardDto,
+  UpdateFlashcardSetDto,
+} from '../../api'
+import { Observable, tap, firstValueFrom } from 'rxjs'
+import { AuthService } from '../../services/auth.service'
+import { FlashcardService } from '../../services/flashcard-http.service'
+import { LocalStorageService } from '../../services/state/local-storage.service'
 
 @Injectable({
   providedIn: 'root',
 })
 export class FlashcardCDKService {
+  private readonly authService = inject(AuthService)
+  private readonly flashcardService = inject(FlashcardService)
   private readonly localStorageService = inject(LocalStorageService)
 
   selectedSetCards = computed(() => {
     const setId = this.selectedSetId()
     if (!setId) return []
 
-    const set = this.localStorageService
-      .state()
-      .flashcardSets.find((s) => s.id === setId)
+    const set = this.flashcardSets().find((s) => s.id === setId)
     return set?.flashcards ?? []
   })
 
   newFlashcards = signal<Flashcard[]>([])
   selectedSetId = signal<string | null>(null)
+  flashcardSets = signal<FlashcardSetWithCards[]>([])
 
-  constructor() {
-    // Initialize with first set if available
-    const state = this.localStorageService.getState()
-    if (state.flashcardSets.length > 0) {
-      this.selectedSetId.set(state.flashcardSets[0].id)
-      this.loadSet(state.flashcardSets[0].id)
+  async loadFlashcardSets(): Promise<void> {
+    try {
+      const sets = await firstValueFrom(
+        this.flashcardService.getFlashcardSets(),
+      )
+      this.flashcardSets.set(sets)
+
+      // Update local storage with the fetched sets
+      this.localStorageService.updateState((state) => ({
+        ...state,
+        flashcardSets: sets,
+      }))
+
+      // Set the first set as selected if we have sets
+      if (sets.length > 0) {
+        this.selectedSetId.set(sets[0].id)
+      }
+    } catch (error) {
+      console.error('Error loading flashcard sets:', error)
     }
   }
 
-  loadSet(setId: string | null): void {
-    this.selectedSetId.set(setId)
+  // Only call this when explicitly needed to refresh a specific set
+  async loadSet(setId: string | null): Promise<void> {
+    if (!setId) return
+
+    try {
+      const set = await firstValueFrom(
+        this.flashcardService.getFlashcardSet(setId),
+      )
+      if (set) {
+        this.flashcardSets.update((sets) =>
+          sets.map((s) => (s.id === setId ? set : s)),
+        )
+        // Update local storage with the updated set
+        this.localStorageService.updateState((state) => ({
+          ...state,
+          flashcardSets: state.flashcardSets.map((s) =>
+            s.id === setId ? set : s,
+          ),
+        }))
+        this.selectedSetId.set(setId)
+      }
+    } catch (error) {
+      console.error('Error loading specific set:', error)
+    }
   }
 
   createNewSet(
     title: string,
     icon_id: string,
   ): Observable<FlashcardSetWithCards> {
-    const newSetId = crypto.randomUUID()
-    const newSet: FlashcardSetWithCards = {
-      id: newSetId,
-      icon_id: icon_id,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+    const newSet: CreateFlashcardSetDto = {
+      iconId: (icon_id as unknown) as Record<string, any>,
       title: title,
-      description: '',
-      flashcards: [],
-      set_position: this.localStorageService.getState().flashcardSets.length,
+      description: (null as unknown) as Record<string, any>,
     }
 
-    this.localStorageService.updateState((state) => ({
-      ...state,
-      flashcardSets: [
-        ...state.flashcardSets,
-        {
-          ...newSet,
-          flashcards: newSet.flashcards.map((card) => ({
-            ...card,
-            flashcard_set_id: newSet.id,
-            position: card.position,
-          })),
-        },
-      ],
-    }))
-
-    // Select the newly created set
-    this.selectedSetId.set(newSetId)
-    this.loadSet(newSetId)
-
-    return of(newSet)
+    return this.flashcardService.createFlashcardSet(newSet).pipe(
+      tap((set: FlashcardSetWithCards) => {
+        if (set) {
+          this.flashcardSets.update((sets) => [...sets, set])
+          this.selectedSetId.set(set.id)
+          this.loadSet(set.id)
+        }
+      }),
+    )
   }
 
   saveSelectedSet(): void {
     const currentSetId = this.selectedSetId()
     if (!currentSetId) return
 
-    this.localStorageService.updateState((state) => {
-      return {
-        ...state,
-        flashcardSets: state.flashcardSets.map((set) => {
-          if (set.id === currentSetId) {
-            return {
-              ...set,
-              flashcards: this.selectedSetCards().map((card, index) => ({
-                ...card,
-                position: index,
-                flashcard_set_id: currentSetId,
-              })),
-            }
-          }
-          return set
-        }),
+    const currentSet = this.flashcardSets().find(
+      (set) => set.id === currentSetId,
+    )
+    if (!currentSet) return
+
+    const updatedCards = this.selectedSetCards().map((card, index) => ({
+      ...card,
+      position: index,
+    }))
+
+    // Update each card in the set
+    updatedCards.forEach((card) => {
+      const updateDto: UpdateFlashcardDto = {
+        position: card.position,
+        front: card.front,
+        back: card.back,
+        difficulty: card.difficulty,
+        tags: card.tags,
       }
+      this.flashcardService
+        .updateCard(card.id, updateDto, currentSetId)
+        .pipe(
+          tap((updatedSet: FlashcardSetWithCards) => {
+            if (updatedSet) {
+              this.flashcardSets.update((sets) =>
+                sets.map((s) => (s.id === currentSetId ? updatedSet : s)),
+              )
+            }
+          }),
+        )
+        .subscribe()
     })
   }
 
@@ -105,22 +144,38 @@ export class FlashcardCDKService {
       ...card,
       position: index,
     }))
+
     if (type === 'new') {
       this.newFlashcards.set(updatedCards)
     } else {
-      this.localStorageService.updateState((state) => ({
-        ...state,
-        flashcardSets: state.flashcardSets.map((set) => ({
-          ...set,
-          flashcards: updatedCards,
-        })),
-      }))
+      const currentSetId = this.selectedSetId()
+      if (!currentSetId) return
+
+      updatedCards.forEach((card) => {
+        const updateDto: UpdateFlashcardDto = {
+          position: card.position,
+          front: card.front,
+          back: card.back,
+          difficulty: card.difficulty,
+          tags: card.tags,
+        }
+        this.flashcardService
+          .updateCard(card.id, updateDto, currentSetId)
+          .pipe(
+            tap((updatedSet: FlashcardSetWithCards) => {
+              if (updatedSet) {
+                this.flashcardSets.update((sets) =>
+                  sets.map((s) => (s.id === currentSetId ? updatedSet : s)),
+                )
+              }
+            }),
+          )
+          .subscribe()
+      })
     }
   }
 
   setNewFlashcards(cards: Array<{ front: string; back: string }>): void {
-    console.log('FlashcardCDKService: Setting new flashcards', cards)
-
     if (!cards || !Array.isArray(cards) || cards.length === 0) {
       console.warn(
         'FlashcardCDKService: Empty or invalid flashcards array received',
@@ -129,61 +184,65 @@ export class FlashcardCDKService {
       return
     }
 
-    const currentSetId = this.selectedSetId() || 'new_set'
-    console.log('FlashcardCDKService: Using set ID', currentSetId)
+    const currentSetId = this.selectedSetId()
+    if (!currentSetId) return
 
-    try {
-      const flashcards = cards.map((card, index) => {
-        if (typeof card !== 'object' || !card.front || !card.back) {
-          console.warn('Invalid flashcard format:', card)
-          return {
-            id: crypto.randomUUID(),
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            flashcard_set_id: currentSetId,
-            front: card?.front || 'Missing front content',
-            back: card?.back || 'Missing back content',
-            position: index,
-            difficulty: null,
-            tags: null,
-          }
-        }
-
-        const newCard = {
-          id: crypto.randomUUID(),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          flashcard_set_id: currentSetId,
-          front: card.front,
-          back: card.back,
+    const flashcards: Flashcard[] = cards.map((card, index) => {
+      if (typeof card !== 'object' || !card.front || !card.back) {
+        console.warn('Invalid flashcard format:', card)
+        return {
+          id: `temp_${index}`,
+          front: card?.front || 'Missing front content',
+          back: card?.back || 'Missing back content',
           position: index,
-          difficulty: null,
-          tags: null,
+          difficulty: undefined,
+          tags: undefined,
+          setId: currentSetId,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         }
-        return newCard
-      })
+      }
 
-      console.log('FlashcardCDKService: Created flashcards', flashcards)
-      this.newFlashcards.set(flashcards)
-    } catch (error) {
-      console.error('Error creating flashcards:', error)
-    }
-  }
+      return {
+        id: `temp_${index}`,
+        front: card.front,
+        back: card.back,
+        position: index,
+        difficulty: undefined,
+        tags: undefined,
+        setId: currentSetId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+    })
 
-  cleanupDuplicateSets(): void {
-    const state = this.localStorageService.getState()
-    const uniqueSets = state.flashcardSets.filter(
-      (set, index, self) => index === self.findIndex((s) => s.id === set.id),
-    )
+    // Update the newFlashcards signal directly
+    this.newFlashcards.set(flashcards)
 
-    this.localStorageService.updateState((state) => ({
-      ...state,
-      flashcardSets: uniqueSets,
-    }))
+    // Create each flashcard
+    flashcards.forEach((card) => {
+      const createDto: CreateFlashcardDto = {
+        front: card.front,
+        back: card.back,
+        position: card.position,
+        setId: currentSetId,
+      }
+      this.flashcardService
+        .createCard(createDto, currentSetId)
+        .pipe(
+          tap((updatedSet: FlashcardSetWithCards) => {
+            if (updatedSet) {
+              this.flashcardSets.update((sets) =>
+                sets.map((s) => (s.id === currentSetId ? updatedSet : s)),
+              )
+            }
+          }),
+        )
+        .subscribe()
+    })
   }
 
   verifySetExists(setId: string): boolean {
-    const state = this.localStorageService.getState()
-    return state.flashcardSets.some((set) => set.id === setId)
+    return this.flashcardSets().some((set) => set.id === setId)
   }
 }

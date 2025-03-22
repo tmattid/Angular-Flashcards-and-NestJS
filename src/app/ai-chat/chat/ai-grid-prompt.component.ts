@@ -31,7 +31,7 @@ interface GridPromptContext {
     front: string
     back: string
     position: number
-    difficulty: string | number
+    difficulty: Record<string, any> | undefined
   }>
   totalCards: number
   scope: 'selected' | 'fullset'
@@ -156,7 +156,7 @@ export class AiGridPromptComponent implements OnDestroy {
         front: row.front,
         back: row.back,
         position: row.position,
-        difficulty: row.difficulty ?? '',
+        difficulty: row.difficulty ? { value: row.difficulty } : undefined,
       })),
       totalCards: selectedSet.flashcards.length,
       scope: this.selectedRows().length > 0 ? 'selected' : 'fullset',
@@ -251,6 +251,7 @@ export class AiGridPromptComponent implements OnDestroy {
 
     // Update local storage using existing updateState method
     this.localStorageService.updateState((current) => ({
+      ...current,
       flashcardSets: current.flashcardSets.map((set) => ({
         ...set,
         flashcards: set.flashcards.map((card) => {
@@ -260,6 +261,9 @@ export class AiGridPromptComponent implements OnDestroy {
             return {
               ...card,
               ...update.changes,
+              difficulty: update.changes.difficulty
+                ? { value: update.changes.difficulty }
+                : undefined,
             }
           }
           return card

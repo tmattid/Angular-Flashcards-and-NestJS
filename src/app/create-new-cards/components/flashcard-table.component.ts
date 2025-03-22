@@ -8,8 +8,7 @@ import {
   inject,
 } from '@angular/core'
 import { CommonModule } from '@angular/common'
-import { FlashcardSetWithCards } from '../../models/flashcards.models'
-import { Flashcard } from '../../models/flashcards.models'
+import { FlashcardSetWithCards, Flashcard } from '../../api'
 import { LocalStorageService } from '../../services/state/local-storage.service'
 
 @Component({

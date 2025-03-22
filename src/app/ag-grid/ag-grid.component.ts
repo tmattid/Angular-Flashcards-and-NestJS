@@ -23,11 +23,7 @@ import { CommonModule } from '@angular/common'
 import { FlashcardService } from '../services/flashcard-http.service'
 import { LocalStorageService } from '../services/state/local-storage.service'
 import { AuthService } from '../services/auth.service'
-import {
-  Flashcard,
-  FlashcardSet,
-  UpdateFlashcardDto,
-} from '../models/flashcards.models'
+import { Flashcard, FlashcardSetWithCards, UpdateFlashcardDto } from '../api'
 import { SetSelectionService } from '../services/set-selection.service'
 import { SelectionService } from '../services/selection.service'
 import { AgGridConfigService } from './ag-grid-config.service'
@@ -36,6 +32,7 @@ import { CardCellRendererComponent } from './cell-renderer/card-cell-renderer.co
 import { SetManagementGridComponent } from './set-management-grid/set-management-grid.component'
 import { animate, style, transition, trigger } from '@angular/animations'
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop'
+import { firstValueFrom } from 'rxjs'
 
 ModuleRegistry.registerModules([AllEnterpriseModule, AllCommunityModule])
 
@@ -50,10 +47,6 @@ export interface GridRow {
   difficulty: number | null
   readonly created_at: string
   readonly position: number // Add position tracking
-}
-
-interface FlashcardSetWithCards extends Omit<FlashcardSet, 'created_by'> {
-  flashcards: Omit<Flashcard, 'flashcard_set_id'>[]
 }
 
 @Component({
@@ -97,6 +90,7 @@ interface FlashcardSetWithCards extends Omit<FlashcardSet, 'created_by'> {
           (onBack)="setSelectionService.setIsManagingSet(false)"
         />
       } @else {
+
         <ag-grid-angular
           @slideInOut
           class="w-full h-full"
@@ -132,37 +126,26 @@ export class AgGridComponent implements OnInit, OnDestroy {
   private readonly flashcardService = inject(FlashcardService)
 
   private gridApi?: GridApi<GridRow>
-
-  // Update computed signal to include position
-  readonly rowData = computed(() => {
-    const state = this.localStorageService.getState()
-    const selectedSet = this.setSelectionService.getSelectedSet()
-
-    if (!selectedSet) {
-      return [] as GridRow[]
-    }
-
-    return state.flashcardSets
-      .filter((set) => set.id === selectedSet?.id)
-      .flatMap((set) =>
-        set.flashcards.map(
-          (card): GridRow => ({
-            setId: set.id,
-            flashcardId: card.id,
-            set_title: set.title,
-            front: card.front,
-            back: card.back,
-            tags: card.tags,
-            difficulty: card.difficulty,
-            created_at: card.created_at,
-            position: card.position,
-          }),
-        ),
-      )
-  })
-
   private readonly isFetching = signal(false)
   private readonly isInitialLoadComplete = signal(false)
+
+  constructor() {
+    // Create the effect in the constructor
+    // effect(() => {
+    //   const isAuthenticated = this.authService.isAuthenticated()
+    //   if (isAuthenticated && !this.isInitialLoadComplete()) {
+    //     this.isFetching.set(true)
+    //     this.loadData().finally(() => {
+    //       this.isFetching.set(false)
+    //       this.isInitialLoadComplete.set(true)
+    //     })
+    //   }
+    // })
+  }
+
+  ngOnInit() {
+    // Remove the effect from here since it's now in the constructor
+  }
 
   autoGroupColumnDef = this.gridConfig.autoGroupColumnDef
   rowSelection = this.gridConfig.rowSelection
@@ -211,37 +194,55 @@ export class AgGridComponent implements OnInit, OnDestroy {
 
   @Output() rowsSelected = new EventEmitter<GridRow[]>()
 
-  ngOnInit() {
-    // Use the user signal from AuthService instead of user$ subscription
-    if (this.authService.isAuthenticated()) {
-      this.isFetching.set(true)
-      this.loadData().finally(() => {
-        this.isFetching.set(false)
-        this.isInitialLoadComplete.set(true)
-      })
+  readonly rowData = computed(() => {
+    const state = this.localStorageService.getState()
+    const selectedSet = this.setSelectionService.getSelectedSet()
+
+    if (!selectedSet) {
+      return [] as GridRow[]
     }
 
-    // Watch for auth changes using effect()
-    effect(() => {
-      if (this.authService.isAuthenticated()) {
-        this.isFetching.set(true)
-        this.loadData().finally(() => {
-          this.isFetching.set(false)
-          this.isInitialLoadComplete.set(true)
-        })
-      }
-    })
-  }
+    return state.flashcardSets
+      .filter((set) => set.id === selectedSet?.id)
+      .flatMap((set) =>
+        set.flashcards.map(
+          (card: Flashcard): GridRow => ({
+            setId: set.id,
+            flashcardId: card.id,
+            set_title: set.title,
+            front: card.front,
+            back: card.back,
+            tags: card.tags ?? null,
+            difficulty: card.difficulty?.['value'] ?? null,
+            created_at: card.createdAt,
+            position: card.position,
+          }),
+        ),
+      )
+  })
 
-  private async loadData(): Promise<void> {
-    try {
-      await this.flashcardService.loadFromBackend()
-      // Data is already loaded in the service and local storage
-    } catch (error) {
-      console.error('Error loading data:', error)
-      this.errorMessage = 'Failed to load flashcards. Please try again.'
-    }
-  }
+  // private async loadData(): Promise<void> {
+  //   try {
+  //     // Check if we have a valid auth token before making the request
+  //     const token = localStorage.getItem('auth_token')
+  //     if (!token) {
+  //       console.log('No auth token found, skipping data load')
+  //       return
+  //     }
+
+  //     await firstValueFrom(this.flashcardService.getFlashcardSets())
+  //     // Data is already loaded in the service and local storage
+  //   } catch (error) {
+  //     console.error('Error loading data:', error)
+  //     this.errorMessage = 'Failed to load flashcards. Please try again.'
+
+  //     // If unauthorized, redirect to login
+  //     if (error instanceof Error && error.message.includes('Unauthorized')) {
+  //       await firstValueFrom(this.authService.logout())
+  //       // The router will handle the redirect to login
+  //     }
+  //   }
+  // }
 
   /**
    * Handles cell value changes with strict type checking
@@ -259,12 +260,16 @@ export class AgGridComponent implements OnInit, OnDestroy {
       const updateDto: UpdateFlashcardDto = {
         front: event.data.front,
         back: event.data.back,
-        difficulty: event.data.difficulty,
+        difficulty: event.data.difficulty
+          ? { value: event.data.difficulty }
+          : undefined,
         position: event.data.position,
       }
 
       // Get the current set
-      const set = this.flashcardService.getFlashcardSet(event.data.setId)
+      const set = await firstValueFrom(
+        this.flashcardService.getFlashcardSet(event.data.setId),
+      )
       if (!set) {
         throw new Error('Flashcard set not found')
       }
@@ -272,7 +277,7 @@ export class AgGridComponent implements OnInit, OnDestroy {
       // Update the flashcard in the set
       const updatedSet = {
         ...set,
-        flashcards: set.flashcards.map((flashcard) =>
+        flashcards: set.flashcards.map((flashcard: Flashcard) =>
           flashcard.id === event.data.flashcardId
             ? {
                 ...flashcard,
@@ -283,7 +288,11 @@ export class AgGridComponent implements OnInit, OnDestroy {
       }
 
       // Update the set using flashcardService
-      this.flashcardService.updateFlashcardSet(updatedSet)
+      this.flashcardService.updateFlashcardSet(event.data.setId, {
+        title: updatedSet.title,
+        iconId: (updatedSet.iconId as unknown) as Record<string, any>,
+        description: (updatedSet.description as unknown) as Record<string, any>,
+      })
     } catch (error) {
       console.error('Update failed:', error)
       this.errorMessage = 'Failed to save changes.'

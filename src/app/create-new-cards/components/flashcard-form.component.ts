@@ -6,7 +6,7 @@ import {
   FormControl,
   Validators,
 } from '@angular/forms'
-import { FlashcardSetWithCards } from '../../models/flashcards.models'
+import { FlashcardSetWithCards } from '../../api'
 
 interface FlashcardForm {
   flashcardSetId: FormControl<string | null>

@@ -6,6 +6,7 @@ import { GridRow } from '../../ag-grid/ag-grid.component'
 import { LocalStorageService } from '../state/local-storage.service'
 import { HttpClient } from '@angular/common/http'
 import { FlashcardService } from '../flashcard-http.service'
+import { Flashcard, FlashcardSetWithCards } from '../../api'
 
 interface GridAiResponse {
   message: string
@@ -23,7 +24,7 @@ interface GridPromptContext {
     front: string
     back: string
     position: number
-    difficulty: number | null | string
+    difficulty: Record<string, any> | undefined
   }>
   totalCards: number
   scope: 'selected' | 'fullset'
@@ -59,11 +60,6 @@ export class AiGridService {
           // Automatically apply updates to localStorage
           if (response.updates && response.updates.length > 0) {
             this.applyUpdatesToLocalStorage(response.updates)
-
-            // Sync changes to backend after AI update
-            this.flashcardService.syncToBackend().catch((error) => {
-              console.error('Failed to sync AI changes to backend:', error)
-            })
           }
         }),
         catchError((error) => {
@@ -78,20 +74,26 @@ export class AiGridService {
   applyUpdatesToLocalStorage(updates: GridAiResponse['updates']) {
     if (updates && updates.length > 0) {
       this.localStorageService.updateState((current) => ({
-        flashcardSets: current.flashcardSets.map((set) => ({
-          ...set,
-          flashcards: set.flashcards.map((card) => {
-            const update = updates.find((u) => u.flashcardId === card.id)
-            if (update) {
-              this.localStorageService.markDirty(card.id)
-              return {
-                ...card,
-                ...update.changes,
+        ...current,
+        flashcardSets: current.flashcardSets.map(
+          (set: FlashcardSetWithCards) => ({
+            ...set,
+            flashcards: set.flashcards.map((card: Flashcard) => {
+              const update = updates.find((u) => u.flashcardId === card.id)
+              if (update) {
+                this.localStorageService.markDirty(card.id)
+                return {
+                  ...card,
+                  ...update.changes,
+                  difficulty: update.changes.difficulty
+                    ? { value: update.changes.difficulty }
+                    : undefined,
+                }
               }
-            }
-            return card
+              return card
+            }),
           }),
-        })),
+        ),
       }))
     }
   }

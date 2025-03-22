@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms'
 import { ButtonModule } from 'primeng/button'
 import { InputTextModule } from 'primeng/inputtext'
 import { DynamicDialogRef, DynamicDialogConfig } from 'primeng/dynamicdialog'
-import { FlashcardSetWithCards } from '../../models/flashcards.models'
+import { FlashcardSetWithCards } from '../../api'
 import { FlashcardCDKService } from '../../ai-chat/services/flashcard-cdk-service.service'
 import { IconPickerComponent } from '../../icon-picker/icon-picker.component'
 
@@ -86,12 +86,13 @@ export class SetEditorPopupComponent {
     const newSet: FlashcardSetWithCards = {
       id: crypto.randomUUID(),
       title: this.titleValue || 'New Set',
-      icon_id: this.selectedIcon,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      iconId: this.selectedIcon,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       description: '',
       flashcards: [],
-      set_position: 0,
+      setPosition: 0,
+      createdBy: 'local-user',
     }
     this.ref.close(newSet)
   }

@@ -8,7 +8,7 @@
     "test": "ng test",
     "dev": "npm run start",
     "install:frontend": "cd Frontend && npm install",
-    "generate-api": "openapi-generator-cli generate -i http://localhost:3000/api-json -g typescript-angular -o src/app/api"
+    "generate-api": "npx openapi-typescript-codegen --input http://localhost:3000/api-json --output ./src/app/api --client angular"
   },
   "private": true,
   "dependencies": {
@@ -41,6 +41,7 @@
     "ai": "^4.1.26",
     "eventsource-parser": "^3.0.0",
     "openai": "^4.83.0",
+    "openapi-typescript-codegen": "^0.29.0",
     "primeicons": "^7.0.0",
     "primeng": "^19.0.7",
     "rxjs": "~7.8.1",
@@ -57,6 +58,7 @@
     "@tailwindcss/postcss": "^4.0.3",
     "@types/deno": "^2.0.0",
     "@types/jasmine": "~5.1.5",
+    "@types/node": "^22.13.11",
     "autoprefixer": "^10.4.17",
     "jasmine-core": "~5.5.0",
     "karma": "~6.4.4",
