@@ -1,26 +1,27 @@
-import { ModelId } from "./ai-models.model";
+import { ModelId } from './ai-models.model'
 
 export interface ChatMessage {
-  role: 'assistant' | 'user';
-  content: string;
+  role: 'assistant' | 'user'
+  content: string
 }
 
 // Base flashcard type that all other flashcard types extend from
 export interface BaseFlashcard {
-  front: string;
-  back: string;
+  front: string
+  back: string
 }
 
 // Edge function response type - This is the parent type
 export interface EdgeFunctionResponse {
-  message: string;
-  cards: BaseFlashcard[];
+  message?: string
+  cards?: Array<{ front: string; back: string }>
+  error?: string
 }
 
 // Request types
 export interface ChatRequest {
-  prompt: string;
-  model_id: ModelId;
-  system_prompt?: string;
-  chat_history?: ChatMessage[];
+  prompt: string
+  model_id: ModelId
+  system_prompt?: string
+  chat_history?: ChatMessage[]
 }

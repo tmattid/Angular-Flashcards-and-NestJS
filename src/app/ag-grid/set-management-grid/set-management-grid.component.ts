@@ -5,6 +5,7 @@ import {
   signal,
   Output,
   EventEmitter,
+  OnInit,
 } from '@angular/core'
 import { AgGridAngular } from 'ag-grid-angular'
 import {
@@ -100,7 +101,7 @@ ModuleRegistry.registerModules([
     }
   `,
 })
-export class SetManagementGridComponent {
+export class SetManagementGridComponent implements OnInit {
   @Output() onBack = new EventEmitter<void>()
 
   readonly localStorageService = inject(LocalStorageService)
@@ -119,6 +120,7 @@ export class SetManagementGridComponent {
       cellRenderer: 'agGroupCellRenderer',
       flex: 1,
       minWidth: 200,
+      onCellValueChanged: this.onSetCellValueChanged.bind(this),
     },
     {
       field: 'icon_id',
@@ -127,14 +129,26 @@ export class SetManagementGridComponent {
       maxWidth: 100,
       cellRenderer: IconCellRendererComponent,
       cellEditor: IconCellEditorComponent,
+      cellEditorParams: {
+        values: [
+          'tuiIconBookOpen',
+          'tuiIconBook',
+          'tuiIconEdit',
+          'tuiIconStar',
+          'tuiIconHeart',
+          'tuiIconCheck',
+          'tuiIconBrain',
+        ],
+      },
+      onCellValueChanged: this.onSetCellValueChanged.bind(this),
     },
-
     {
       field: 'description',
       headerName: 'Description',
       editable: true,
       flex: 2,
       minWidth: 300,
+      onCellValueChanged: this.onSetCellValueChanged.bind(this),
     },
     {
       headerName: 'Cards',
@@ -166,11 +180,7 @@ export class SetManagementGridComponent {
       },
       onCellClicked: async (params: any) => {
         if (await this.confirmDelete()) {
-          this.localStorageService.removeSet(params.data.id)
-          // Force grid refresh
-          this.gridApi?.setRowData(
-            this.localStorageService.getState().flashcardSets,
-          )
+          this.deleteSet(params.data.id)
         }
       },
     },
@@ -178,11 +188,12 @@ export class SetManagementGridComponent {
 
   defaultColDef: ColDef = {
     sortable: true,
-    flex: 1,
+    filter: true,
+    resizable: true,
+    suppressMovable: false,
     wrapText: true,
     autoHeight: true,
-    headerClass: 'text-center',
-    cellStyle: { textAlign: 'center', display: 'flex', alignItems: 'center' },
+    cellClass: 'text-sm py-2',
   }
 
   detailCellRendererParams: IDetailCellRendererParams<
@@ -224,43 +235,153 @@ export class SetManagementGridComponent {
     },
   } as IDetailCellRendererParams<ValidatedFlashcardSet, Flashcard>
 
-  onFirstDataRendered(params: FirstDataRenderedEvent) {
-    setTimeout(() => {
-      params.api.sizeColumnsToFit()
-    }, 0)
+  ngOnInit() {
+    // Initialize grid data from localStorage
+    this.refreshGridData()
+  }
+
+  /**
+   * Refresh grid data from localStorage
+   */
+  refreshGridData() {
+    const sets = this.localStorageService.getState().flashcardSets
+    if (this.gridApi) {
+      try {
+        // First try proper AG Grid method
+        this.gridApi.setRowData(sets)
+      } catch (e) {
+        console.warn(
+          'Error using setRowData, falling back to alternative method',
+          e,
+        )
+        // If the above fails, try this alternative
+        if (this.gridApi.applyTransaction) {
+          this.gridApi.applyTransaction({ update: sets })
+        }
+      }
+    }
   }
 
   onGridReady(params: GridReadyEvent) {
+    // Store reference to the grid API
     this.gridApi = params.api
+
+    // Wait a tick to ensure grid is properly initialized
+    setTimeout(() => {
+      // Initialize with data
+      this.refreshGridData()
+    }, 0)
+
+    // Add event listener for cell value changed to handle edits
+    params.api.addEventListener(
+      'cellValueChanged',
+      this.onSetCellValueChanged.bind(this),
+    )
   }
 
-  onSetCellValueChanged(event: CellValueChangedEvent): void {
-    if (!event.data) return
+  /**
+   * Handles cell value changes from AG Grid
+   */
+  onSetCellValueChanged(event: any): void {
+    if (!event.data || !event.data.id) {
+      console.warn('Missing data or ID in cell value changed event')
+      return
+    }
+
+    const fieldName = event.column?.getColId() || ''
+    const newValue = event.newValue
+
+    console.log(
+      `Cell value changed for set ${event.data.id}:`,
+      fieldName,
+      newValue,
+    )
+
+    // Update the set in LocalStorageService with the new value
+    this.localStorageService.updateState((state) => ({
+      ...state,
+      flashcardSets: state.flashcardSets.map((set) =>
+        set.id === event.data.id
+          ? {
+              ...set,
+              [fieldName]: newValue,
+              updated_at: new Date().toISOString(),
+            }
+          : set,
+      ),
+    }))
+
+    // Mark the set as dirty for syncing
     this.localStorageService.markDirty(event.data.id)
+    console.log(`Set ${event.data.id} marked as dirty after cell value change`)
+  }
+
+  /**
+   * Handles set deletion with proper cleanup
+   */
+  private deleteSet(setId: string): void {
+    console.log(`Deleting set with ID: ${setId}`)
+
+    // Remove the set from localStorage
+    this.localStorageService.removeSet(setId)
+
+    // Mark the deletion for syncing with backend
+    this.localStorageService.markDirty(setId)
+
+    // Wait a moment for the deletion to be processed
+    setTimeout(() => {
+      // Get the fresh data from localStorage
+      const updatedSets = this.localStorageService.getState().flashcardSets
+
+      // Force refresh the grid data
+      try {
+        if (this.gridApi) {
+          this.gridApi.setRowData(updatedSets)
+        }
+      } catch (error) {
+        console.warn('Error refreshing grid after deletion:', error)
+        // Try alternative refresh method
+        if (this.gridApi && this.gridApi.refreshCells) {
+          this.gridApi.refreshCells({ force: true })
+        }
+      }
+    }, 100)
+
+    console.log(`Set ${setId} marked as deleted and will be synced`)
   }
 
   async createNewSet(): Promise<void> {
     try {
-      const userId = this.authService.user()?.id
-      if (!userId) throw new Error('User not authenticated')
+      // Generate a new UUID for the set
+      const newSetId = crypto.randomUUID()
 
+      // Create a new set with default values
       const newSet: ValidatedFlashcardSet = {
-        id: crypto.randomUUID(),
+        id: newSetId,
         title: 'New Set',
-        description: null,
+        description: 'Your flashcard collection',
         created_at: new Date().toISOString(),
         flashcards: [],
-        icon_id: '@tui.book',
-        set_position: 0,
+        icon_id: 'tuiIconBook',
+        set_position: this.localStorageService.getState().flashcardSets.length,
         updated_at: new Date().toISOString(),
       }
 
+      // Add the new set to localStorage
       this.localStorageService.updateState((state) => ({
         ...state,
         flashcardSets: [...state.flashcardSets, newSet],
       }))
 
-      this.localStorageService.markDirty(newSet.id)
+      // Mark the set as dirty for syncing
+      this.localStorageService.markDirty(newSetId)
+
+      // Refresh the grid to show the new set
+      setTimeout(() => {
+        this.refreshGridData()
+      }, 50)
+
+      console.log(`New set created with ID: ${newSetId}`)
     } catch (error) {
       console.error('Failed to create new set:', error)
       this.errorMessage.set('Failed to create new set')
@@ -284,5 +405,11 @@ export class SetManagementGridComponent {
     )
       .then(() => true)
       .catch(() => false)
+  }
+
+  onFirstDataRendered(params: FirstDataRenderedEvent) {
+    setTimeout(() => {
+      params.api.sizeColumnsToFit()
+    }, 0)
   }
 }

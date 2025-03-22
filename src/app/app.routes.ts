@@ -1,28 +1,8 @@
 import { Routes } from '@angular/router'
 import { LoginComponent } from './login/login.component'
 import { DashboardComponent } from './dashboard/dashboard.component'
-import { inject } from '@angular/core'
-import { AuthService } from './services/auth.service'
-import { Router, CanActivateFn } from '@angular/router'
-import { map, firstValueFrom, timeout, catchError } from 'rxjs'
-import { of } from 'rxjs'
-
-// Type-safe auth guard function
-const authGuard: CanActivateFn = async () => {
-  const authService = inject(AuthService)
-  const router = inject(Router)
-
-  try {
-
-
-
-    await router.navigate(['/login'])
-    return false
-  } catch (error) {
-    console.error('Auth guard error:', error)
-    return false
-  }
-}
+import { authGuard } from './auth/auth.guard'
+import { AuthCallbackComponent } from './auth/auth-callback/auth-callback.component'
 
 export const routes: Routes = [
   {
@@ -33,17 +13,18 @@ export const routes: Routes = [
   {
     path: 'dashboard',
     component: DashboardComponent,
-
     title: 'Dashboard',
+    canActivate: [authGuard],
   },
   {
     path: 'auth/callback',
-    component: DashboardComponent,
-    title: 'Dashboard',
+    component: AuthCallbackComponent,
+    title: 'Authentication',
   },
   {
     path: '',
-    redirectTo: '/login',
+    redirectTo: 'dashboard',
     pathMatch: 'full',
   },
+  { path: '**', redirectTo: 'dashboard' },
 ]

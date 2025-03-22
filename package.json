@@ -2,14 +2,11 @@
   "name": "angular-19-project",
   "version": "0.0.0",
   "scripts": {
-    "start": "npm run supabase:types && ng serve --configuration development",
-    "build": "npm run supabase:types && ng build",
-    "watch": "concurrently \"npm run supabase:types:watch\" \"ng build --watch --configuration development\"",
+    "start": "ng serve --configuration development",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "supabase:types": "npx supabase gen types typescript --project-id bpqyrdbmzfvtjhhworvk --schema public > src/app/models/supabase.models.ts && sleep 1 && node --loader ts-node/esm --experimental-specifier-resolution=node src/app/models/simplify-types.ts",
-    "supabase:types:watch": "nodemon --exec 'npm run supabase:types' --watch supabase/schema.sql",
-    "supabase:start": "npx supabase start",
-    "dev": "npm run supabase:start && npm run start"
+    "dev": "npm run start"
   },
   "private": true,
   "dependencies": {
@@ -25,7 +22,6 @@
     "@angular/router": "^19.1.5",
     "@anthropic-ai/sdk": "^0.36.3",
     "@primeng/themes": "^19.0.7",
-    "@supabase/supabase-js": "^2.48.1",
     "@taiga-ui/addon-charts": "^4.24.0",
     "@taiga-ui/addon-commerce": "^4.24.0",
     "@taiga-ui/addon-doc": "^4.24.0",

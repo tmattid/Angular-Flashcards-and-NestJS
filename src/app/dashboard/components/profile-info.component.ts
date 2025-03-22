@@ -1,6 +1,6 @@
 import { Component, Input } from '@angular/core'
 import { CommonModule } from '@angular/common'
-import { User } from '@supabase/supabase-js'
+import { UserProfile } from '../../services/auth.service'
 
 @Component({
   selector: 'app-profile-info',
@@ -16,12 +16,16 @@ import { User } from '@supabase/supabase-js'
   `,
 })
 export class ProfileInfoComponent {
-  @Input({ required: true }) profile: User | null = null
+  @Input({ required: true }) profile: UserProfile | null = null
 
   protected getName(): string {
+    if (!this.profile) return 'Welcome!'
+
     return (
-      this.profile?.user_metadata?.['full_name'] ||
-      this.profile?.user_metadata?.['name'] ||
+      [this.profile.firstName, this.profile.lastName]
+        .filter(Boolean)
+        .join(' ') ||
+      this.profile.email.split('@')[0] ||
       'Welcome!'
     )
   }

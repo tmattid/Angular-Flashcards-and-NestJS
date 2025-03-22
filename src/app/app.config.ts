@@ -1,14 +1,22 @@
 import { NG_EVENT_PLUGINS } from '@taiga-ui/event-plugins'
 import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core'
-import { provideRouter, withViewTransitions } from '@angular/router'
-import { provideHttpClient, withFetch } from '@angular/common/http'
+import {
+  provideRouter,
+  withViewTransitions,
+  withComponentInputBinding,
+} from '@angular/router'
+import {
+  provideHttpClient,
+  withFetch,
+  withInterceptors,
+} from '@angular/common/http'
 import { provideClientHydration } from '@angular/platform-browser'
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async'
 import { routes } from './app.routes'
-import { provideSupabase } from './services/auth.service'
 import { providePrimeNG } from 'primeng/config'
 import { definePreset } from '@primeng/themes'
 import Aura from '@primeng/themes/aura'
+import { authInterceptor } from './auth/auth.interceptor'
 
 const Noir = definePreset(Aura, {
   semantic: {
@@ -76,9 +84,8 @@ const Noir = definePreset(Aura, {
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
-    provideRouter(routes, withViewTransitions()),
-    provideHttpClient(withFetch()),
-    provideSupabase(),
+    provideRouter(routes, withViewTransitions(), withComponentInputBinding()),
+    provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
     provideAnimationsAsync(),
     providePrimeNG({
       theme: {

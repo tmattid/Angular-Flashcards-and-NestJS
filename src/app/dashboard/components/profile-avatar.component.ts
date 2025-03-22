@@ -1,6 +1,6 @@
 import { Component, Input } from '@angular/core'
 import { CommonModule } from '@angular/common'
-import { User } from '@supabase/supabase-js'
+import { UserProfile } from '../../services/auth.service'
 
 @Component({
   selector: 'app-profile-avatar',
@@ -30,20 +30,20 @@ import { User } from '@supabase/supabase-js'
   `,
 })
 export class ProfileAvatarComponent {
-  @Input({ required: true }) profile: User | null = null
+  @Input({ required: true }) profile: UserProfile | null = null
 
   protected getAvatarUrl(): string | null {
-    return (
-      this.profile?.user_metadata?.['avatar_url'] ||
-      this.profile?.user_metadata?.['picture'] ||
-      null
-    )
+    return this.profile?.profilePicture || null
   }
 
   protected getName(): string {
+    if (!this.profile) return 'User'
+
     return (
-      this.profile?.user_metadata?.['full_name'] ||
-      this.profile?.user_metadata?.['name'] ||
+      [this.profile.firstName, this.profile.lastName]
+        .filter(Boolean)
+        .join(' ') ||
+      this.profile.email.split('@')[0] ||
       'User'
     )
   }

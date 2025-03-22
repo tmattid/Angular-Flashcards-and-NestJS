@@ -94,8 +94,7 @@ import { animate, style, transition, trigger } from '@angular/animations'
           </ng-template>
         </tui-data-list-wrapper>
       </tui-select>
-      }
-      @if (activeTab === 0) {
+      } @if (activeTab === 0) {
       <div @fadeSlide>
         <button
           tuiButton
@@ -173,11 +172,27 @@ export class FlashcardSetSelectorComponent implements OnInit {
         if (this.initialized) return
 
         const sets = this.availableSets()
-        if (sets.length > 0 && !this.selectedSet()) {
+        if (sets.length > 0) {
           this.initialized = true
-          const firstSet = sets[0]
-          this.selectedSet.set(firstSet)
-          this.onSelectedSetChange(firstSet)
+          // Only set the first set if no set is currently selected
+          if (!this.selectedSet()) {
+            const firstSet = sets[0]
+            console.log('Auto-selecting first set in effect:', firstSet.title)
+            this.selectedSet.set(firstSet)
+            this.onSelectedSetChange(firstSet)
+          }
+        } else {
+          // If there are no sets, check if FlashcardCDKService has a selected set
+          // This could happen if a default set was just created
+          const currentSetId = this.flashcardCDKService.selectedSetId()
+          if (currentSetId) {
+            console.log(
+              'CDK service has a set ID but not in available sets yet:',
+              currentSetId,
+            )
+            // There's a selected set ID but it's not in our list yet
+            // We'll wait for the next update cycle
+          }
         }
       },
       { injector: inject(Injector) },
@@ -188,10 +203,27 @@ export class FlashcardSetSelectorComponent implements OnInit {
 
   ngOnInit() {
     const sets = this.availableSets()
-    if (sets.length > 0 && !this.selectedSet()) {
-      const firstSet = sets[0]
-      this.selectedSet.set(firstSet)
-      this.onSelectedSetChange(firstSet)
+    if (sets.length > 0) {
+      // If we have sets but no selection, select the first one
+      if (!this.selectedSet()) {
+        const firstSet = sets[0]
+        this.selectedSet.set(firstSet)
+        this.onSelectedSetChange(firstSet)
+      }
+    } else {
+      // No sets exist yet, we need to check if a default set was created
+      // Request a refresh of available sets and then try again
+      setTimeout(() => {
+        const refreshedSets = this.availableSets()
+        if (refreshedSets.length > 0) {
+          const defaultSet = refreshedSets[0]
+          this.selectedSet.set(defaultSet)
+          this.onSelectedSetChange(defaultSet)
+          console.log('Default set loaded in set selector:', defaultSet.title)
+        } else {
+          console.warn('No sets available even after refresh in set selector')
+        }
+      }, 100) // Small delay to allow services to initialize
     }
   }
 

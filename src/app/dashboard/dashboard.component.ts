@@ -1,4 +1,4 @@
-import { Component, inject, effect, signal } from '@angular/core'
+import { Component, inject, effect, signal, OnInit } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { Router } from '@angular/router'
 import { AuthService } from '../services/auth.service'
@@ -13,6 +13,8 @@ import { FlashcardSetSelectorComponent } from '../flashcard-set-selection/flashc
 import { TabSelectorComponent } from './components/tab-selector.component'
 import { FlashcardListComponent } from '../card-list/flashcard-list.component'
 import { SetSelectionService } from '../services/set-selection.service'
+import { FlashcardService } from '../services/flashcard-http.service'
+import { FlashcardCDKService } from '../ai-chat/services/flashcard-cdk-service.service'
 
 type Tab = 'grid' | 'flashcard-list' | 'profile'
 
@@ -106,11 +108,12 @@ type Tab = 'grid' | 'flashcard-list' | 'profile'
     `,
   ],
 })
-export class DashboardComponent {
+export class DashboardComponent implements OnInit {
   private readonly auth = inject(AuthService)
   readonly editSetService = inject(SetSelectionService)
   private readonly router = inject(Router)
-  // private flashcardService = inject(FlashcardService);
+  private readonly flashcardService = inject(FlashcardService)
+  private readonly flashcardCDKService = inject(FlashcardCDKService)
   protected readonly user = this.auth.user
   protected readonly tabs: Tab[] = [
     'grid',
@@ -118,6 +121,37 @@ export class DashboardComponent {
     'profile',
   ] as const
   protected readonly activeTab = signal<number>(0)
+  private dataLoaded = signal<boolean>(false)
+
+  ngOnInit(): void {
+    this.loadFlashcardData()
+  }
+
+  /**
+   * Loads flashcard data from the backend
+   */
+  private async loadFlashcardData(): Promise<void> {
+    if (this.dataLoaded()) return
+
+    try {
+      console.log('Dashboard: Loading flashcard data from backend')
+      const sets = await this.flashcardService.loadFromBackend()
+      console.log(`Dashboard: Loaded ${sets.length} sets from backend`)
+
+      // If no sets were loaded, ensure a default set exists
+      if (sets.length === 0) {
+        console.log(
+          'Dashboard: No sets found, checking if we need to create a default set',
+        )
+        // This will trigger the FlashcardCDKService to create a default set
+        this.flashcardCDKService.ensureDefaultSetExists()
+      }
+
+      this.dataLoaded.set(true)
+    } catch (error) {
+      console.error('Dashboard: Error loading flashcard data:', error)
+    }
+  }
 
   /**
    * Handles tab changes. If the clicked tab differs from the current value,

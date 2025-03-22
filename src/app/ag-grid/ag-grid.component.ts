@@ -8,6 +8,7 @@ import {
   EventEmitter,
   Output,
   DestroyRef,
+  effect,
 } from '@angular/core'
 import { AgGridAngular } from 'ag-grid-angular'
 import {
@@ -27,7 +28,6 @@ import {
   FlashcardSet,
   UpdateFlashcardDto,
 } from '../models/flashcards.models'
-import { SupabaseClient } from '@supabase/supabase-js'
 import { SetSelectionService } from '../services/set-selection.service'
 import { SelectionService } from '../services/selection.service'
 import { AgGridConfigService } from './ag-grid-config.service'
@@ -35,6 +35,7 @@ import { ThemeService } from '../services/theme.service'
 import { CardCellRendererComponent } from './cell-renderer/card-cell-renderer.component'
 import { SetManagementGridComponent } from './set-management-grid/set-management-grid.component'
 import { animate, style, transition, trigger } from '@angular/animations'
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop'
 
 ModuleRegistry.registerModules([AllEnterpriseModule, AllCommunityModule])
 
@@ -123,7 +124,6 @@ interface FlashcardSetWithCards extends Omit<FlashcardSet, 'created_by'> {
 export class AgGridComponent implements OnInit, OnDestroy {
   localStorageService = inject(LocalStorageService)
   private authService = inject(AuthService)
-  private supabase = inject(SupabaseClient)
   readonly setSelectionService = inject(SetSelectionService)
   private selectionService = inject(SelectionService)
   gridConfig = inject(AgGridConfigService)
@@ -211,47 +211,59 @@ export class AgGridComponent implements OnInit, OnDestroy {
 
   @Output() rowsSelected = new EventEmitter<GridRow[]>()
 
-  async ngOnInit() {
-    // Wait for auth state to be ready
-    const {
-      data: { user },
-    } = await this.supabase.auth.getUser()
-    const userId = user?.id
-
-    if (userId) {
+  ngOnInit() {
+    // Use the user signal from AuthService instead of user$ subscription
+    if (this.authService.isAuthenticated()) {
       this.isFetching.set(true)
-      await this.loadData(userId).finally(() => {
+      this.loadData().finally(() => {
         this.isFetching.set(false)
         this.isInitialLoadComplete.set(true)
       })
     }
+
+    // Watch for auth changes using effect()
+    effect(() => {
+      if (this.authService.isAuthenticated()) {
+        this.isFetching.set(true)
+        this.loadData().finally(() => {
+          this.isFetching.set(false)
+          this.isInitialLoadComplete.set(true)
+        })
+      }
+    })
   }
 
-  private async loadData(userId: string): Promise<void> {
+  private async loadData(): Promise<void> {
     try {
-      const { data, error } = await this.supabase
-        .from('flashcard_sets')
-        .select('*, flashcards(*)')
-        .eq('created_by', userId)
-        .order('set_position', { ascending: true })
+      console.log('AgGrid: Loading data from backend')
+      const sets = await this.flashcardService.loadFromBackend()
+      console.log(`AgGrid: Loaded ${sets.length} sets from backend`)
 
-      if (error) throw error
+      if (sets.length === 0) {
+        console.log('AgGrid: No sets found in backend')
+      }
 
-      this.localStorageService.updateState((current) => ({
-        ...current,
-        flashcardSets: (data ?? []).map((set) => ({
-          ...set,
-          icon_id: set.icon_id ?? '@tui.book',
-          flashcards: set.flashcards.map((card: Flashcard, index: number) => ({
-            ...card,
-            position: index,
-            flashcard_set_id: set.id,
-          })),
-        })),
-      }))
+      // Data is already loaded in the service and local storage
+      // Now refresh the grid with the updated data
+      this.refreshGridData()
     } catch (error) {
       console.error('Error loading data:', error)
       this.errorMessage = 'Failed to load flashcards. Please try again.'
+    }
+  }
+
+  /**
+   * Refreshes the grid data from the FlashcardService
+   */
+  private refreshGridData(): void {
+    // Get the updated sets from the service
+    const allSets = this.flashcardService.sets()
+    console.log(`AgGrid: Refreshing grid with ${allSets.length} sets`)
+
+    // The rowData is already a computed signal that uses the latest state
+    // Just update the grid if it's available
+    if (this.gridApi) {
+      this.gridApi.refreshCells()
     }
   }
 
@@ -261,43 +273,41 @@ export class AgGridComponent implements OnInit, OnDestroy {
   async onCellValueChanged(event: CellValueChangedEvent<GridRow>) {
     if (!event.data) return
 
-    const field = event.column.getColId()
-    if (!['front', 'back', 'difficulty', 'tags'].includes(field)) return
+    const field = event.colDef.field as keyof GridRow
+    if (!field || !['front', 'back', 'difficulty'].includes(field as string)) {
+      return
+    }
 
     try {
+      // Build update DTO with strict types
       const updateDto: UpdateFlashcardDto = {
-        [field]:
-          event.data[
-            field as keyof Pick<
-              GridRow,
-              'front' | 'back' | 'difficulty' | 'tags'
-            >
-          ],
+        front: event.data.front,
+        back: event.data.back,
+        difficulty: event.data.difficulty,
+        position: event.data.position,
       }
 
-      // Update local state with position preservation
-      this.localStorageService.updateState((current) => ({
-        ...current,
-        flashcardSets: current.flashcardSets.map((set) =>
-          set.id === event.data.setId
-            ? {
-                ...set,
-                flashcards: set.flashcards.map((flashcard) =>
-                  flashcard.id === event.data.flashcardId
-                    ? {
-                        ...flashcard,
-                        [field]: updateDto[field as keyof UpdateFlashcardDto],
-                        position: flashcard.position, // Preserve position
-                      }
-                    : flashcard,
-                ),
-              }
-            : set,
-        ),
-      }))
+      // Get the current set
+      const set = this.flashcardService.getFlashcardSet(event.data.setId)
+      if (!set) {
+        throw new Error('Flashcard set not found')
+      }
 
-      // Mark item as dirty
-      this.localStorageService.markDirty(event.data.flashcardId)
+      // Update the flashcard in the set
+      const updatedSet = {
+        ...set,
+        flashcards: set.flashcards.map((flashcard) =>
+          flashcard.id === event.data.flashcardId
+            ? {
+                ...flashcard,
+                [field]: updateDto[field as keyof UpdateFlashcardDto],
+              }
+            : flashcard,
+        ),
+      }
+
+      // Update the set using flashcardService
+      this.flashcardService.updateFlashcardSet(updatedSet)
     } catch (error) {
       console.error('Update failed:', error)
       this.errorMessage = 'Failed to save changes.'

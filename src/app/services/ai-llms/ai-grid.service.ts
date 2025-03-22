@@ -1,9 +1,11 @@
 import { Injectable, inject } from '@angular/core'
-import { Observable, from } from 'rxjs'
+import { Observable, catchError, map, of, tap } from 'rxjs'
 import { environment } from '../../../environments/environment'
-import { Model, ModelId } from '../../models/ai-http-service/ai-models.model'
+import { ModelId } from '../../models/ai-http-service/ai-models.model'
 import { GridRow } from '../../ag-grid/ag-grid.component'
 import { LocalStorageService } from '../state/local-storage.service'
+import { HttpClient } from '@angular/common/http'
+import { FlashcardService } from '../flashcard-http.service'
 
 interface GridAiResponse {
   message: string
@@ -31,8 +33,10 @@ interface GridPromptContext {
   providedIn: 'root',
 })
 export class AiGridService {
-  private readonly SUPABASE_URL = 'https://bpqyrdbmzfvtjhhworvk.supabase.co'
+  private readonly apiUrl = `${environment.apiUrl}/ai`
   private readonly localStorageService = inject(LocalStorageService)
+  private readonly http = inject(HttpClient)
+  private readonly flashcardService = inject(FlashcardService)
 
   generateGridUpdates(
     prompt: string,
@@ -48,46 +52,47 @@ export class AiGridService {
       },
     }
 
-    const headers = new Headers({
-      Authorization: `Bearer ${environment.supabaseKey}`,
-      'Content-Type': 'application/json',
-    })
+    return this.http
+      .post<GridAiResponse>(`${this.apiUrl}/update-flashcards`, requestBody)
+      .pipe(
+        tap((response) => {
+          // Automatically apply updates to localStorage
+          if (response.updates && response.updates.length > 0) {
+            this.applyUpdatesToLocalStorage(response.updates)
 
-    return from(
-      fetch(`${this.SUPABASE_URL}/functions/v1/update-flashcards`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(requestBody),
-      }).then(async (response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-        const data = await response.json()
+            // Sync changes to backend after AI update
+            this.flashcardService.syncToBackend().catch((error) => {
+              console.error('Failed to sync AI changes to backend:', error)
+            })
+          }
+        }),
+        catchError((error) => {
+          console.error('AI Grid Service error:', error)
+          return of({
+            message: 'Failed to process AI request. Please try again.',
+          })
+        }),
+      )
+  }
 
-        // Update local storage using existing updateState method
-        if (data.updates?.length > 0) {
-          this.localStorageService.updateState((current) => ({
-            flashcardSets: current.flashcardSets.map((set) => ({
-              ...set,
-              flashcards: set.flashcards.map((card) => {
-                const update = data.updates?.find(
-                  (u: { flashcardId: string }) => u.flashcardId === card.id,
-                )
-                if (update) {
-                  this.localStorageService.markDirty(card.id)
-                  return {
-                    ...card,
-                    ...update.changes,
-                  }
-                }
-                return card
-              }),
-            })),
-          }))
-        }
-
-        return data
-      }),
-    )
+  applyUpdatesToLocalStorage(updates: GridAiResponse['updates']) {
+    if (updates && updates.length > 0) {
+      this.localStorageService.updateState((current) => ({
+        flashcardSets: current.flashcardSets.map((set) => ({
+          ...set,
+          flashcards: set.flashcards.map((card) => {
+            const update = updates.find((u) => u.flashcardId === card.id)
+            if (update) {
+              this.localStorageService.markDirty(card.id)
+              return {
+                ...card,
+                ...update.changes,
+              }
+            }
+            return card
+          }),
+        })),
+      }))
+    }
   }
 }

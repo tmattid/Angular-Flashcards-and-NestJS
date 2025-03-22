@@ -338,7 +338,59 @@ export class AiPromptComponent {
             this.updateStreamResponse(response.message)
           }
           if (response.cards?.length) {
-            this.flashcardCDKService.setNewFlashcards(response.cards)
+            console.log('DEBUG: Received cards from backend:', response.cards)
+
+            // Make sure cards are in the correct format
+            const parsedCards = response.cards.map((card) => {
+              // Ensure card has front and back properties
+              if (!card.front || !card.back) {
+                console.warn('Malformed card:', card)
+                return {
+                  front: card.front || 'Missing front content',
+                  back: card.back || 'Missing back content',
+                }
+              }
+              return card
+            })
+
+            // First check if user has a set selected
+            const selectedSetId = this.flashcardCDKService.selectedSetId()
+
+            // Force a change detection update
+            setTimeout(() => {
+              // Set the generated flashcards
+              this.flashcardCDKService.setNewFlashcards(parsedCards)
+              console.log(
+                'DEBUG: Updated cards in CDK service. Current state:',
+                this.flashcardCDKService.newFlashcards(),
+              )
+
+              // Add a helpful message about what happened
+              if (selectedSetId) {
+                // We already add cards to selected set (in setNewFlashcards), so just inform user
+                this.messages.update((messages) => [
+                  ...messages,
+                  {
+                    text: `Generated ${parsedCards.length} flashcards. Cards are available in the flashcard panel and have been automatically stored in your selected set.`,
+                    isUser: false,
+                  },
+                ])
+              } else {
+                // No set was selected, but our updated service created a default set
+                this.messages.update((messages) => [
+                  ...messages,
+                  {
+                    text: `Generated ${parsedCards.length} flashcards. A default set "My Flashcards" was created for you, and your cards were automatically added to it.`,
+                    isUser: false,
+                  },
+                ])
+              }
+            }, 0)
+          } else {
+            console.warn(
+              'DEBUG: No cards in response or empty array:',
+              response,
+            )
           }
         },
       })

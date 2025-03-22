@@ -1,8 +1,7 @@
-import { Component, signal } from '@angular/core'
+import { Component, inject, signal, OnInit } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { AuthService } from '../services/auth.service'
-import { Router } from '@angular/router'
-import { tap, catchError, EMPTY } from 'rxjs'
+import { Router, ActivatedRoute } from '@angular/router'
 
 @Component({
   selector: 'app-login',
@@ -10,7 +9,7 @@ import { tap, catchError, EMPTY } from 'rxjs'
   imports: [CommonModule],
   template: `
     <div class="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div class="w-full max-w-md p-8  shadow-2xl rounded-lg">
+      <div class="w-full max-w-md p-8 shadow-2xl rounded-lg">
         <h2 class="text-2xl font-semibold text-center mb-6">Welcome Back</h2>
         <button
           (click)="signInWithGoogle()"
@@ -65,28 +64,43 @@ import { tap, catchError, EMPTY } from 'rxjs'
       </div>
     </div>
   `,
-  styles: [],
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
+  private authService = inject(AuthService)
+  private router = inject(Router)
+  private route = inject(ActivatedRoute)
+
   loading = signal<boolean>(false)
   error = signal<string | null>(null)
 
-  constructor(private authService: AuthService, private router: Router) {}
+  ngOnInit(): void {
+    // Access the signal value correctly with ()
+    const isAuthenticated = this.authService.isAuthenticated()
+    if (isAuthenticated) {
+      this.router.navigate(['/dashboard'])
+    }
+
+    // Check for return URL in query params
+    this.route.queryParams.subscribe((params) => {
+      if (params['returnUrl']) {
+        // Store return URL in localStorage for after login
+        localStorage.setItem('returnUrl', params['returnUrl'])
+      }
+    })
+  }
 
   signInWithGoogle(): void {
     this.loading.set(true)
     this.error.set(null)
 
-    this.authService
-      .signInWithGoogle()
-      .pipe(
-        tap(() => this.loading.set(false)),
-        catchError((err) => {
-          this.error.set(err.message || 'Google login failed')
-          this.loading.set(false)
-          return EMPTY
-        }),
-      )
-      .subscribe()
+    // Get any stored return URL
+    const returnUrl = localStorage.getItem('returnUrl')
+
+    // Our service handles redirection, pass the returnUrl in the callback URL
+    // Use question mark for first parameter, not ampersand
+    const callbackParams = returnUrl
+      ? `?returnUrl=${encodeURIComponent(returnUrl)}`
+      : ''
+    this.authService.signInWithGoogle(callbackParams)
   }
 }
