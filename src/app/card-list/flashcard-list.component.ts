@@ -239,12 +239,7 @@ export class FlashcardListComponent {
     // If moving from new to selected, verify the set exists first
     if (fromNewToSelected && selectedSetId) {
       // Verify set exists before trying to add cards to it
-      if (!this.flashcardCDKService.verifySetExists(selectedSetId)) {
-        console.error(
-          `Failed to verify set ${selectedSetId} exists, cannot add card`,
-        )
-        return
-      }
+      this.flashcardCDKService.verifySetExists(selectedSetId)
     }
 
     if (event.previousContainer === event.container) {
@@ -279,11 +274,7 @@ export class FlashcardListComponent {
           ...state,
           flashcardSets: state.flashcardSets.map((set) =>
             set.id === selectedSetId
-              ? {
-                  ...set,
-                  flashcards: updatedCards,
-                  updated_at: new Date().toISOString(),
-                }
+              ? { ...set, flashcards: updatedCards }
               : set,
           ),
         }))
@@ -292,7 +283,7 @@ export class FlashcardListComponent {
         this.localStorageService.markDirty(selectedSetId)
       }
 
-      // No need to call saveSelectedSet() here, we've already updated everything
+      this.updateCardPositions()
     } else {
       // Moving between containers
       console.log('Moving card between containers')
@@ -329,11 +320,7 @@ export class FlashcardListComponent {
           ...state,
           flashcardSets: state.flashcardSets.map((set) =>
             set.id === selectedSetId
-              ? {
-                  ...set,
-                  flashcards: updatedSelectedCards,
-                  updated_at: new Date().toISOString(),
-                }
+              ? { ...set, flashcards: updatedSelectedCards }
               : set,
           ),
         }))
@@ -341,16 +328,6 @@ export class FlashcardListComponent {
         // Mark as dirty and save
         this.localStorageService.markDirty(selectedSetId)
         console.log(`Added card to set ${selectedSetId} and marked as dirty`)
-
-        // Also update the FlashcardService
-        const currentSet = this.flashcardService.getFlashcardSet(selectedSetId)
-        if (currentSet) {
-          const updatedSet = {
-            ...currentSet,
-            flashcards: updatedSelectedCards,
-          }
-          this.flashcardService.updateFlashcardSet(updatedSet)
-        }
       } else if (fromSelectedToNew) {
         // Moving from selected to new
         // First, remove from selected set
@@ -369,28 +346,12 @@ export class FlashcardListComponent {
             ...state,
             flashcardSets: state.flashcardSets.map((set) =>
               set.id === selectedSetId
-                ? {
-                    ...set,
-                    flashcards: updatedSelectedCards,
-                    updated_at: new Date().toISOString(),
-                  }
+                ? { ...set, flashcards: updatedSelectedCards }
                 : set,
             ),
           }))
 
           this.localStorageService.markDirty(selectedSetId)
-
-          // Also update the FlashcardService
-          const currentSet = this.flashcardService.getFlashcardSet(
-            selectedSetId,
-          )
-          if (currentSet) {
-            const updatedSet = {
-              ...currentSet,
-              flashcards: updatedSelectedCards,
-            }
-            this.flashcardService.updateFlashcardSet(updatedSet)
-          }
         }
 
         // Then, add to new flashcards
@@ -406,7 +367,10 @@ export class FlashcardListComponent {
       }
     }
 
-    // No need to call saveSelectedSet() again as we've already updated both services directly
+    // Save changes to the flashcard service
+    if (selectedSetId) {
+      this.flashcardCDKService.saveSelectedSet()
+    }
   }
 
   private updateCardPositions(): void {
@@ -519,18 +483,8 @@ export class FlashcardListComponent {
       `Added ${allNewCards.length} cards to set ${selectedSetId} and marked as dirty`,
     )
 
-    // Also update FlashcardService directly
-    const currentSet = this.flashcardService.getFlashcardSet(selectedSetId)
-    if (currentSet) {
-      const updatedSet = {
-        ...currentSet,
-        flashcards: updatedCards,
-      }
-      this.flashcardService.updateFlashcardSet(updatedSet)
-      console.log(
-        `Updated FlashcardService with new cards in set ${selectedSetId}`,
-      )
-    }
+    // Save changes
+    this.saveSet()
   }
 
   /**

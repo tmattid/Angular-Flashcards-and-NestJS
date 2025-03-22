@@ -58,25 +58,17 @@ export class FlashcardService {
 
       // Get only the dirty items
       const dirtyItemIds = this.localStorageService.getDirtyItems()
-      console.log('Dirty item IDs:', dirtyItemIds)
-
       if (dirtyItemIds.length === 0) {
         console.log('No dirty items to sync')
         return
       }
 
       const dirtyItems = sets.filter((set) => dirtyItemIds.includes(set.id))
-      console.log('Dirty items to sync:', dirtyItems)
-
-      // Format payload as expected by backend
-      const payload = { sets: dirtyItems }
-      console.log('Sending payload to backend:', payload)
-      console.log('API URL:', `${this.apiUrl}/sync`)
 
       // Send dirty items to backend
-      const response = await firstValueFrom(
+      await firstValueFrom(
         this.http
-          .post<FlashcardSetWithCards[]>(`${this.apiUrl}/sync`, payload)
+          .post<FlashcardSetWithCards[]>(`${this.apiUrl}/sync`, dirtyItems)
           .pipe(
             tap((response) => {
               console.log('Sync successful:', response)
@@ -85,87 +77,35 @@ export class FlashcardService {
             }),
             catchError((error) => {
               console.error('Sync failed:', error)
-
-              // Check for authentication errors specifically
-              if (error.status === 401 || error.status === 403) {
-                console.error('Authentication error:', error)
-                throw new Error(
-                  'User not authenticated. Please log in to save your cards.',
-                )
-              }
-
-              // Network or server errors
-              if (error.status === 0) {
-                throw new Error(
-                  'Network error. Please check your connection and try again.',
-                )
-              }
-
-              // Other API errors with response
-              if (error.error?.message) {
-                throw new Error(`API error: ${error.error.message}`)
-              }
-
-              // Default error case
-              throw error
+              return of([])
             }),
           ),
       )
-
-      return
     } catch (error) {
       console.error('Error syncing to backend:', error)
-      throw error // Re-throw to be handled by the caller
     }
   }
 
   /**
    * Load flashcard sets from backend
-   * @returns The loaded flashcard sets
    */
-  async loadFromBackend(): Promise<FlashcardSetWithCards[]> {
+  async loadFromBackend(): Promise<void> {
     try {
-      console.log('Loading flashcards from backend:', `${this.apiUrl}`)
-
       const response = await firstValueFrom(
         this.http.get<FlashcardSetWithCards[]>(`${this.apiUrl}`).pipe(
           catchError((error) => {
             console.error('Failed to load flashcards from backend:', error)
-
-            // Check for authentication errors specifically
-            if (error.status === 401 || error.status === 403) {
-              console.error('Authentication error while loading:', error)
-              // Return empty array instead of throwing to handle gracefully
-              return of([])
-            }
-
-            // Network or server errors
-            if (error.status === 0) {
-              console.error('Network error while loading flashcards')
-              return of([])
-            }
-
             return of([])
           }),
         ),
       )
 
-      console.log('Response from backend:', response)
-
-      // Always update the flashcardSets, even if empty
-      // This ensures we properly handle the case where the user has no sets yet
-      this.flashcardSets.set(response)
-      this.localStorageService.loadFromApi(response)
-
-      // Log how many sets were loaded
-      console.log(`Loaded ${response.length} flashcard sets from backend`)
-
-      // Return the response in case we want to use it
-      return response
+      if (response.length > 0) {
+        this.flashcardSets.set(response)
+        this.localStorageService.loadFromApi(response)
+      }
     } catch (error) {
-      console.error('Error loading flashcards from backend:', error)
-      // Return an empty array to indicate no data was loaded
-      return []
+      console.error('Error loading from backend:', error)
     }
   }
 
@@ -243,7 +183,6 @@ export class FlashcardService {
       .subscribe()
   }
 
-  // Add a method to get dirty items from the LocalStorageService
   getDirtyItems(): ReadonlyArray<string> {
     return this.localStorageService.getDirtyItems()
   }

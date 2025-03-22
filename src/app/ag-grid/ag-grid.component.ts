@@ -235,35 +235,11 @@ export class AgGridComponent implements OnInit, OnDestroy {
 
   private async loadData(): Promise<void> {
     try {
-      console.log('AgGrid: Loading data from backend')
-      const sets = await this.flashcardService.loadFromBackend()
-      console.log(`AgGrid: Loaded ${sets.length} sets from backend`)
-
-      if (sets.length === 0) {
-        console.log('AgGrid: No sets found in backend')
-      }
-
+      await this.flashcardService.loadFromBackend()
       // Data is already loaded in the service and local storage
-      // Now refresh the grid with the updated data
-      this.refreshGridData()
     } catch (error) {
       console.error('Error loading data:', error)
       this.errorMessage = 'Failed to load flashcards. Please try again.'
-    }
-  }
-
-  /**
-   * Refreshes the grid data from the FlashcardService
-   */
-  private refreshGridData(): void {
-    // Get the updated sets from the service
-    const allSets = this.flashcardService.sets()
-    console.log(`AgGrid: Refreshing grid with ${allSets.length} sets`)
-
-    // The rowData is already a computed signal that uses the latest state
-    // Just update the grid if it's available
-    if (this.gridApi) {
-      this.gridApi.refreshCells()
     }
   }
 

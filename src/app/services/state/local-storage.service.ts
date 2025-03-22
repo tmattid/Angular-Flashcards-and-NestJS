@@ -91,31 +91,12 @@ export class LocalStorageService {
     return this.state()
   }
 
-  /**
-   * Update state with validation to prevent duplicate sets
-   */
   updateState(updater: StateUpdater): void {
     this.state.update((current) => {
       const newState = updater(current)
-
-      // Check for and remove duplicate sets
-      const uniqueSets: ValidatedFlashcardSet[] = []
-      const seenIds = new Set<string>()
-
-      newState.flashcardSets.forEach((set) => {
-        if (!seenIds.has(set.id)) {
-          seenIds.add(set.id)
-          uniqueSets.push(set)
-        } else {
-          console.warn(
-            `Prevented duplicate set with ID ${set.id} from being added to localStorage`,
-          )
-        }
-      })
-
       // Validate and ensure position tracking
       const validatedState: LocalStorageState = {
-        flashcardSets: uniqueSets.map((set) => ({
+        flashcardSets: newState.flashcardSets.map((set) => ({
           ...set,
           flashcards: set.flashcards.map(
             (card, index): ValidatedFlashcard => ({
@@ -126,14 +107,12 @@ export class LocalStorageService {
           ),
         })),
       }
-
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(validatedState))
       return validatedState
     })
   }
 
   markDirty(itemId: string): void {
-    console.log(`Marking item as dirty: ${itemId}`)
     this.dirtyItems.update((items) =>
       items.includes(itemId) ? items : [...items, itemId],
     )
@@ -149,15 +128,7 @@ export class LocalStorageService {
     )
   }
 
-  /**
-   * Updates local state with data from the API
-   * @param apiResponse The flashcard sets received from the API
-   */
   loadFromApi(apiResponse: FlashcardSetWithCards[]): void {
-    console.log(`Local storage: loading ${apiResponse.length} sets from API`)
-
-    // Always update state, even if response is empty
-    // This ensures we properly clear local data when the server has no sets
     this.updateState(() => ({
       flashcardSets: apiResponse.map((set) => ({
         ...set,
@@ -171,14 +142,8 @@ export class LocalStorageService {
       })),
     }))
 
-    // Reset dirty items when loading from API
-    // This prevents syncing items we just loaded
-    this.dirtyItems.set([])
-
     // Also save to the new format
     this.setItem('flashcardSets', apiResponse)
-
-    console.log('Local storage updated with API data')
   }
 
   removeSet(setId: string): void {
@@ -187,65 +152,16 @@ export class LocalStorageService {
     }))
   }
 
-  /**
-   * Resets the application state to default (empty sets)
-   */
   resetState(): void {
-    console.log('Resetting application state to default')
-
-    // Create an empty state
-    const emptyState: LocalStorageState = {
-      flashcardSets: [],
-    }
-
-    // Update localStorage
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(emptyState))
-
-    // Clear dirty items
-    localStorage.removeItem(this.DIRTY_KEY)
-
-    // Update the signal
-    this.state.set(emptyState)
-    this.dirtyItems.set([])
-
-    console.log('Application state has been reset')
+    this.state.set({ flashcardSets: [] })
+    this.clear()
   }
 
-  /**
-   * Cleans up any duplicate sets in the state
-   */
   cleanupDuplicates(): void {
-    console.log('Cleaning up duplicate sets')
-
-    const currentState = this.getState()
-    const uniqueIds = new Set<string>()
-    const uniqueSets: ValidatedFlashcardSet[] = []
-
-    currentState.flashcardSets.forEach((set) => {
-      if (!uniqueIds.has(set.id)) {
-        uniqueIds.add(set.id)
-        uniqueSets.push(set)
-      } else {
-        console.warn(`Removed duplicate set with ID: ${set.id}`)
-      }
-    })
-
-    // If we found and removed duplicates, update the state
-    if (uniqueSets.length < currentState.flashcardSets.length) {
-      console.log(
-        `Removed ${
-          currentState.flashcardSets.length - uniqueSets.length
-        } duplicate sets`,
-      )
-
-      const cleanState: LocalStorageState = {
-        flashcardSets: uniqueSets,
-      }
-
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(cleanState))
-      this.state.set(cleanState)
-    } else {
-      console.log('No duplicates found')
-    }
+    this.updateState((current) => ({
+      flashcardSets: current.flashcardSets.filter(
+        (set, index, self) => index === self.findIndex((s) => s.id === set.id),
+      ),
+    }))
   }
 }

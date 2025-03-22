@@ -218,9 +218,4 @@ export class AuthService {
         }),
       )
   }
-
-  // Returns true if the user is authenticated
-  checkIfAuthenticated(): boolean {
-    return !!this.tokenSignal()
-  }
 }

@@ -376,11 +376,11 @@ export class AiPromptComponent {
                   },
                 ])
               } else {
-                // No set was selected, but our updated service created a default set
+                // No set selected, guide user to select one
                 this.messages.update((messages) => [
                   ...messages,
                   {
-                    text: `Generated ${parsedCards.length} flashcards. A default set "My Flashcards" was created for you, and your cards were automatically added to it.`,
+                    text: `Generated ${parsedCards.length} flashcards. Cards are available in the flashcard panel. Please select a set to save them to.`,
                     isUser: false,
                   },
                 ])
