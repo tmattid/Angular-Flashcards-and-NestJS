@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+// Add this after your Tailwind imports
+.container {
+  max-width: none !important;
+  width: 100% !important;
+}
+
+// Disable responsive container max-widths
+@media (min-width: 640px) {
+  .container {
+    max-width: none !important;
+  }
+}
+@media (min-width: 768px) {
+  .container {
+    max-width: none !important;
+  }
+}
+@media (min-width: 1024px) {
+  .container {
+    max-width: none !important;
+  }
+}
+@media (min-width: 1280px) {
+  .container {
+    max-width: none !important;
+  }
+}
+
+/* You can add global styles to this file, and also import other style files */
+
+/* CDK drag-drop styling */
+.cdk-drag-preview {
+  opacity: 0.75;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+}
+
+.cdk-drag-placeholder {
+  opacity: 0;
+}
+
+.cdk-drag-animating {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.cdk-drop-list-dragging .cdk-drag {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+// Custom styles can be added here
+
+/* Your other global styles below, if any */
+app-tab-selector {
+  display: flex;
+}
+
+:root {
+  --primary-color: var(--p-primary-color);
+  --primary-contrast-color: var(--p-primary-contrast-color);
+  --text-color: var(--p-text-color);
+  --text-color-secondary: var(--p-text-muted-color);
+  --surface-border: var(--p-content-border-color);
+  --surface-card: var(--p-content-background);
+  --surface-hover: var(--p-content-hover-background);
+  --surface-overlay: var(--p-overlay-popover-background);
+  --transition-duration: var(--p-transition-duration);
+  --maskbg: var(--p-mask-background);
+  --content-border-radius: var(--p-content-border-radius);
+  --layout-section-transition-duration: 0.2s;
+  --element-transition-duration: var(--p-transition-duration);
+  --focus-ring-width: var(--p-focus-ring-width);
+  --focus-ring-style: var(--p-focus-ring-style);
+  --focus-ring-color: var(--p-focus-ring-color);
+  --focus-ring-offset: var(--p-focus-ring-offset);
+  --focus-ring-shadow: var(--p-focus-ring-shadow);
+}
+
+:root[class*='app-dark'] {
+  --surface-ground: var(--p-surface-50);
+  --code-background: var(--p-surface-600);
+  --code-color: var(--p-surface-100);
+}
+
+:root {
+  --surface-ground: var(--p-surface-100);
+  --code-background: var(--p-surface-900);
+  --code-color: var(--p-surface-200);
+}
+
+.text-center {
+  text-align: center;
+}
+
+
+.ag-details-row {
+  .ag-cell {
+    line-height: 1.7;
+    padding: 0.5rem;
+  }
+}
