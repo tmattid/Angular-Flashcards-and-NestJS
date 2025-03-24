@@ -29,10 +29,9 @@ import { SelectionService } from '../services/selection.service'
 import { AgGridConfigService } from './ag-grid-config.service'
 import { ThemeService } from '../services/theme.service'
 import { CardCellRendererComponent } from './cell-renderer/card-cell-renderer.component'
-import { SetManagementGridComponent } from './set-management-grid/set-management-grid.component'
 import { animate, style, transition, trigger } from '@angular/animations'
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop'
 import { firstValueFrom } from 'rxjs'
+import { GridChatBoxComponent } from './components/grid-chat-box.component'
 
 ModuleRegistry.registerModules([AllEnterpriseModule, AllCommunityModule])
 
@@ -52,7 +51,7 @@ export interface GridRow {
 @Component({
   selector: 'app-ag-grid',
   standalone: true,
-  imports: [AgGridAngular, CommonModule, SetManagementGridComponent],
+  imports: [AgGridAngular, CommonModule, GridChatBoxComponent],
   animations: [
     trigger('slideInOut', [
       transition(':enter', [
@@ -83,34 +82,62 @@ export interface GridRow {
     ]),
   ],
   template: `
-    <div class="relative overflow-hidden" style="height: 87vh;">
-      @if (setSelectionService.getIsManagingSet()) {
-        <app-set-management-grid
-          @slideInOut
-          (onBack)="setSelectionService.setIsManagingSet(false)"
-        />
-      } @else {
+    <div class="relative h-full w-full overflow-hidden">
+      <div class="flex h-full gap-2 overflow-hidden">
+        <!-- Grid Chat Box -->
+        <app-grid-chat-box
+          *ngIf="!setSelectionService.getIsManagingSet()"
+          class="flex-shrink-0 w-2/6 overflow-hidden"
+        ></app-grid-chat-box>
 
-        <ag-grid-angular
-          @slideInOut
-          class="w-full h-full"
-          [theme]="themeService.darkMode() ? gridConfig.myThemeDark : gridConfig.myThemeLight"
-          [rowData]="rowData()"
-          [columnDefs]="gridConfig.columnDefs"
-          [defaultColDef]="gridConfig.gridOptions.defaultColDef"
-          [autoGroupColumnDef]="gridConfig.autoGroupColumnDef"
-          [gridOptions]="gridConfig.gridOptions"
-          [rowSelection]="gridConfig.rowSelection"
-          (gridReady)="onGridReady($event)"
-          (cellValueChanged)="onCellValueChanged($event)"
-        ></ag-grid-angular>
-      }
+        <!-- Main content area -->
+        <div class="grid-container flex-1 overflow-hidden">
+          <!-- Standard grid view -->
+          <ag-grid-angular
+            *ngIf="!setSelectionService.getIsManagingSet()"
+            @slideInOut
+            class="w-full h-full"
+            [theme]="
+              themeService.darkMode()
+                ? gridConfig.myThemeDark
+                : gridConfig.myThemeLight
+            "
+            [rowData]="rowData()"
+            [columnDefs]="gridConfig.columnDefs"
+            [defaultColDef]="gridConfig.gridOptions.defaultColDef"
+            [autoGroupColumnDef]="gridConfig.autoGroupColumnDef"
+            [gridOptions]="gridConfig.gridOptions"
+            [rowSelection]="gridConfig.rowSelection"
+            (gridReady)="onGridReady($event)"
+            (cellValueChanged)="onCellValueChanged($event)"
+          ></ag-grid-angular>
+        </div>
+      </div>
     </div>
   `,
   styles: [
     `
+      .grid-container {
+        @apply overflow-hidden h-full;
+        min-width: 0;
+        width: 100%;
+      }
+
       .hidden {
         display: none;
+      }
+
+      /* Make the cards take up more width */
+      :host ::ng-deep .ag-center-cols-container {
+        @apply w-full;
+      }
+
+      :host ::ng-deep .ag-cell {
+        overflow: visible;
+      }
+
+      :host ::ng-deep .ag-row {
+        width: 100% !important;
       }
     `,
   ],
@@ -144,50 +171,55 @@ export class AgGridComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    // Remove the effect from here since it's now in the constructor
+    // size columns to fit initially
+    
   }
 
   autoGroupColumnDef = this.gridConfig.autoGroupColumnDef
   rowSelection = this.gridConfig.rowSelection
 
-  // Update column definitions with stricter types
-  columnDefs: ColDef<GridRow>[] = [
-    {
-      field: 'front',
-      headerName: 'Front',
-      editable: true,
-      cellRenderer: CardCellRendererComponent,
-      valueSetter: (params): boolean => {
-        if (params.newValue === params.oldValue) return false
-        return params.newValue?.trim() !== ''
-      },
-      minWidth: 200,
-    },
-    {
-      field: 'back',
-      headerName: 'Back',
-      editable: true,
-      cellRenderer: CardCellRendererComponent,
-      valueSetter: (params): boolean => {
-        if (params.newValue === params.oldValue) return false
-        return params.newValue?.trim() !== ''
-      },
-      minWidth: 200,
-    },
-    // {
-    //   field: 'position',
-    //   headerName: 'Position',
-    //   pinned: 'left',
-    //   maxWidth: 50,
-    //   editable: false,
-    //   sort: 'asc',
-    // },
-  ]
+  // Remove duplicate column definitions - use only gridConfig.columnDefs
+  // columnDefs: ColDef<GridRow>[] = [
+  //   //check
+  //   {
+  //     field: 'front',
+  //     headerName: 'Front',
+  //     editable: true,
+  //     cellRenderer: CardCellRendererComponent,
+  //     valueSetter: (params): boolean => {
+  //       if (params.newValue === params.oldValue) return false
+  //       return params.newValue?.trim() !== ''
+  //     },
+  //     flex: 1,
+  //     minWidth: 200,
+  //     width: 400,
+  //     autoHeight: true,
+  //     wrapText: true,
+  //   },
+  //   {
+  //     field: 'back',
+  //     headerName: 'Back',
+  //     editable: true,
+  //     cellRenderer: CardCellRendererComponent,
+  //     valueSetter: (params): boolean => {
+  //       if (params.newValue === params.oldValue) return false
+  //       return params.newValue?.trim() !== ''
+  //     },
+  //     flex: 1,
+  //     minWidth: 200,
+  //     width: 400,
+  //     autoHeight: true,
+  //     wrapText: true,
+  //   },
+  // ]
 
   defaultColDef: ColDef<GridRow> = {
     sortable: true,
     filter: false,
     autoHeight: true,
+    wrapText: true,
+    resizable: true,
+    flex: 1,
   }
 
   errorMessage: string = ''
@@ -307,7 +339,6 @@ export class AgGridComponent implements OnInit, OnDestroy {
 
   onGridReady(params: GridReadyEvent<GridRow>) {
     this.gridApi = params.api
-    params.api.sizeColumnsToFit()
 
     // Selection handler
     params.api.addEventListener('selectionChanged', () => {
@@ -315,8 +346,15 @@ export class AgGridComponent implements OnInit, OnDestroy {
       this.selectionService.updateSelection(selectedRows)
     })
 
+    // Initial sizing
+    this.gridApi.sizeColumnsToFit()
+
     // Resize handler
-    const resizeHandler = () => params.api.sizeColumnsToFit()
+    const resizeHandler = () => {
+      if (this.gridApi) {
+        this.gridApi.sizeColumnsToFit()
+      }
+    }
     window.addEventListener('resize', resizeHandler)
 
     // Cleanup resize listener on destroy
@@ -345,5 +383,13 @@ export class AgGridComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     // No need for effect cleanup anymore
+  }
+
+  /**
+   * Helper method to properly size the grid columns
+   */
+  private resizeGrid(): void {
+    if (!this.gridApi) return
+    this.gridApi.sizeColumnsToFit()
   }
 }

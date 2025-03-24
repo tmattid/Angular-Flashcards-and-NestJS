@@ -13,18 +13,18 @@ import { CardCellRendererComponent } from './cell-renderer/card-cell-renderer.co
 
 @Injectable({ providedIn: 'root' })
 export class AgGridConfigService {
-
-
   readonly gridOptions: Partial<GridOptions> = {
     defaultColDef: {
       sortable: true,
       filter: false,
       autoHeight: true,
+      resizable: true,
+      suppressSizeToFit: true,
     },
     suppressRowClickSelection: true,
     rowSelection: 'multiple',
     groupDefaultExpanded: 1,
-
+    rowHeight: 48,
   }
 
   readonly autoGroupColumnDef: ColDef<GridRow> = {
@@ -48,18 +48,17 @@ export class AgGridConfigService {
     headerFontSize: 14,
   })
 
-  readonly myThemeDark = themeAlpine
-	.withParams({
-        backgroundColor: "#1f2836",
-        browserColorScheme: "dark",
-        chromeBackgroundColor: {
-            ref: "foregroundColor",
-            mix: 0.07,
-            onto: "backgroundColor"
-        },
-        foregroundColor: "#FFF",
-        headerFontSize: 14
-    });
+  readonly myThemeDark = themeAlpine.withParams({
+    backgroundColor: '#1f2836',
+    browserColorScheme: 'dark',
+    chromeBackgroundColor: {
+      ref: 'foregroundColor',
+      mix: 0.07,
+      onto: 'backgroundColor',
+    },
+    foregroundColor: '#FFF',
+    headerFontSize: 14,
+  })
 
   readonly columnDefs: ColDef<GridRow>[] = [
     {
@@ -71,7 +70,13 @@ export class AgGridConfigService {
         if (params.newValue === params.oldValue) return false
         return params.newValue?.trim() !== ''
       },
+
+      flex: 1,
       minWidth: 200,
+      autoHeight: true,
+      wrapText: true,
+      checkboxSelection: true,
+      headerCheckboxSelection: true,
     },
     {
       field: 'back',
@@ -82,13 +87,13 @@ export class AgGridConfigService {
         if (params.newValue === params.oldValue) return false
         return params.newValue?.trim() !== ''
       },
+      flex: 1,
       minWidth: 200,
+      autoHeight: true,
+      wrapText: true,
     },
   ]
 
-  readonly rowSelection: RowSelectionOptions | 'single' | 'multiple' = {
-    mode: 'multiRow',
-  }
-
-
+  readonly rowSelection: RowSelectionOptions | 'single' | 'multiple' =
+    'multiple'
 }

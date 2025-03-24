@@ -8,6 +8,7 @@ import {
   DestroyRef,
   OnInit,
   Input,
+  effect,
 } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import {
@@ -168,6 +169,26 @@ export class FlashcardSetSelectorComponent implements OnInit {
       this.selectedSet.set(firstSet)
       this.setSelectionService.setSelectedSet(firstSet)
     }
+
+    // Listen for state changes using effect() to keep the selected set in sync
+    effect(() => {
+      const state = this.localStorageService.getState()
+      const currentSelectedSet = this.selectedSet()
+
+      if (currentSelectedSet) {
+        // Find the updated version of the currently selected set
+        const updatedSet = state.flashcardSets.find(
+          (set) => set.id === currentSelectedSet.id,
+        )
+        if (updatedSet && updatedSet !== currentSelectedSet) {
+          // Update the selected set with the latest data
+          this.selectedSet.set(updatedSet)
+
+          // Also update the selection service
+          this.setSelectionService.setSelectedSet(updatedSet)
+        }
+      }
+    })
   }
 
   showDialog(set?: FlashcardSetWithCards | null): void {

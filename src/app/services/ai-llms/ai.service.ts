@@ -11,10 +11,21 @@ import {
   ChatRequest,
   EdgeFunctionResponse,
 } from '../../models/ai-http-service/ai.types'
+import { Flashcard } from '../../api'
+import { FlashcardCDKService } from '../../ai-chat/services/flashcard-cdk-service.service'
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
   content: string
+}
+
+interface GeneratedFlashcard {
+  front: string
+  back: string
+}
+
+interface ExtendedEdgeFunctionResponse extends EdgeFunctionResponse {
+  flashcards?: GeneratedFlashcard[]
 }
 
 @Injectable({
@@ -22,6 +33,7 @@ export interface ChatMessage {
 })
 export class AiService {
   private readonly http = inject(HttpClient)
+  private readonly flashcardCDKService = inject(FlashcardCDKService)
   private readonly apiUrl = `${environment.apiUrl}/ai`
 
   private readonly availableModels = signal<Model[]>(MODEL_DETAILS)
@@ -41,7 +53,7 @@ export class AiService {
 
   private async processStreamResponse(
     response: Response,
-  ): Promise<EdgeFunctionResponse> {
+  ): Promise<ExtendedEdgeFunctionResponse> {
     const reader = response.body?.getReader()
     if (!reader) throw new Error('Response body is null')
 
@@ -60,13 +72,13 @@ export class AiService {
     buffer += finalBuffer
 
     try {
-      return JSON.parse(buffer) as EdgeFunctionResponse
+      return JSON.parse(buffer) as ExtendedEdgeFunctionResponse
     } catch (error) {
       throw new Error(`Failed to parse response: ${error}`)
     }
   }
 
-  generateResponse(prompt: string): Observable<EdgeFunctionResponse> {
+  generateResponse(prompt: string): Observable<ExtendedEdgeFunctionResponse> {
     const requestBody = {
       prompt,
       model_id: this.currentModel().id,
@@ -84,9 +96,8 @@ export class AiService {
 
     console.log('AiService: Sending request to backend', requestBody)
 
-    // Use HttpClient instead of fetch with Supabase
     return this.http
-      .post<EdgeFunctionResponse>(
+      .post<ExtendedEdgeFunctionResponse>(
         `${this.apiUrl}/generate-flashcards`,
         requestBody,
       )
@@ -101,12 +112,37 @@ export class AiService {
               { role: 'assistant', content: response.message || '' },
             ])
           }
+
+          // Process flashcards if they exist in the response
+          if (response.flashcards && response.flashcards.length > 0) {
+            // Get current new flashcards
+            const currentNewCards = this.flashcardCDKService.newFlashcards()
+
+            // Create new flashcards with proper structure
+            const newFlashcards: Flashcard[] = response.flashcards.map(
+              (card: GeneratedFlashcard, index: number) => ({
+                id: `temp-${Date.now()}-${index}`, // Temporary ID for new cards
+                front: card.front,
+                back: card.back,
+                position: currentNewCards.length + index,
+                setId: '', // Empty string for new cards
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              }),
+            )
+
+            // Update the new flashcards in the CDK service
+            this.flashcardCDKService.newFlashcards.set([
+              ...currentNewCards,
+              ...newFlashcards,
+            ])
+          }
         }),
         catchError((error) => {
           console.error('AI Service error:', error)
           return of({
             message: 'Failed to generate response. Please try again later.',
-          })
+          } as ExtendedEdgeFunctionResponse)
         }),
       )
   }

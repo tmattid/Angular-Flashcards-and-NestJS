@@ -6,14 +6,9 @@ import { DashboardNavComponent } from './components/dashboard-nav.component'
 import { ProfileInfoComponent } from './components/profile-info.component'
 import { ProfileAvatarComponent } from './components/profile-avatar.component'
 import { AgGridComponent, GridRow } from '../ag-grid/ag-grid.component'
-import { AiChatComponent } from '../ai-chat/ai-chat.component'
-import { FlashcardCreatePage } from '../create-new-cards/flashcard-create.page'
-import { TuiSegmented } from '@taiga-ui/kit'
-import { FlashcardSetSelectorComponent } from '../flashcard-set-selection/flashcard-set-selector.component'
-import { TabSelectorComponent } from './components/tab-selector.component'
 import { FlashcardListComponent } from '../card-list/flashcard-list.component'
-import { SetSelectionService } from '../services/set-selection.service'
 import { FlashcardCDKService } from '../ai-chat/services/flashcard-cdk-service.service'
+import { SetSelectionService } from '../services/set-selection.service'
 
 type Tab = 'grid' | 'flashcard-list' | 'profile'
 
@@ -26,14 +21,10 @@ type Tab = 'grid' | 'flashcard-list' | 'profile'
     ProfileInfoComponent,
     ProfileAvatarComponent,
     AgGridComponent,
-    AiChatComponent,
-    FlashcardListComponent,
-    FlashcardSetSelectorComponent,
-
     FlashcardListComponent,
   ],
   template: `
-    <div class="page-wrapper">
+    <div class="page-wrapper flex flex-col min-h-screen">
       <app-dashboard-nav
         [userEmail]="user()?.email || ''"
         (signOut)="signOut()"
@@ -41,34 +32,23 @@ type Tab = 'grid' | 'flashcard-list' | 'profile'
       ></app-dashboard-nav>
 
       <div class="dashboard-container">
-        <!-- Left Column - AI Chat -->
-        @if (!editSetService.getIsManagingSet()) {
-          <div class="chat-column gap-2 flex flex-col bg-gray-1 border p-2 border-gray-300 rounded-lg">
-
-            <app-flashcard-set-selector [activeTab]="activeTab()" />
-            <app-ai-chat [activeTab]="activeTab()"></app-ai-chat>
+        <!-- Full Width Content Column -->
+        <div class="content-panel w-full">
+          <div [hidden]="activeTab() !== 2" class="panel-content">
+            <div class="flex-center">
+              <app-profile-avatar
+                [profile]="user() || null"
+              ></app-profile-avatar>
+              <app-profile-info [profile]="user() || null"></app-profile-info>
+            </div>
           </div>
-        }
 
-        <!-- Right Column - Dynamic Content -->
-        <div [class]="editSetService.getIsManagingSet() ? 'w-full' : 'content-column'">
-          <div class="content-panel">
-            <div [hidden]="activeTab() !== 2" class="panel-content">
-              <div class="flex-center">
-                <app-profile-avatar
-                  [profile]="user() || null"
-                ></app-profile-avatar>
-                <app-profile-info [profile]="user() || null"></app-profile-info>
-              </div>
-            </div>
+          <div [hidden]="activeTab() !== 0" class="panel-content">
+            <app-ag-grid (rowsSelected)="onRowsSelected($event)"></app-ag-grid>
+          </div>
 
-            <div [hidden]="activeTab() !== 0" class="panel-content">
-              <app-ag-grid (rowsSelected)="onRowsSelected($event)"></app-ag-grid>
-            </div>
-
-            <div [hidden]="activeTab() !== 1" class="panel-content">
-              <app-flashcard-list></app-flashcard-list>
-            </div>
+          <div [hidden]="activeTab() !== 1" class="panel-content">
+            <app-flashcard-list></app-flashcard-list>
           </div>
         </div>
       </div>
@@ -77,27 +57,19 @@ type Tab = 'grid' | 'flashcard-list' | 'profile'
   styles: [
     `
       .page-wrapper {
-        @apply min-h-screen w-full;
+        @apply flex flex-col min-h-screen w-full h-screen;
       }
 
       .dashboard-container {
-        @apply w-full h-[calc(100vh-4rem)] flex gap-2 p-4;
-      }
-
-      .chat-column {
-        @apply w-1/3 rounded-lg shadow overflow-hidden;
-      }
-
-      .content-column {
-        @apply w-2/3 flex flex-col;
+        @apply w-full flex-1 flex p-4 overflow-hidden min-h-0;
       }
 
       .content-panel {
-        @apply flex-1  rounded-lg shadow overflow-hidden;
+        @apply flex-1 rounded-lg shadow overflow-hidden flex flex-col min-h-0;
       }
 
       .panel-content {
-        @apply h-full w-full;
+        @apply h-full w-full overflow-auto min-h-0;
       }
 
       .flex-center {
@@ -124,11 +96,6 @@ export class DashboardComponent implements OnInit {
     await this.flashcardService.loadFlashcardSets()
   }
 
-  /**
-   * Handles tab changes. If the clicked tab differs from the current value,
-   * update the signal (which will trigger the effect). If the clicked tab is
-   * the same as the current one, manually trigger `onTabChange()`.
-   */
   changeTab(tab: Tab): void {
     if (this.activeTab() === this.tabs.indexOf(tab)) {
       // The signal's value isn't updated since it's equal,

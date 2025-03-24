@@ -1,4 +1,11 @@
-import { Component, inject, Input, TrackByFunction } from '@angular/core'
+import {
+  Component,
+  inject,
+  Input,
+  TrackByFunction,
+  OnInit,
+  OnDestroy,
+} from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { CdkDragDrop, transferArrayItem } from '@angular/cdk/drag-drop'
 import { DragDropModule } from '@angular/cdk/drag-drop'
@@ -9,165 +16,139 @@ import { FlashcardService } from '../services/flashcard-http.service'
 import { signal } from '@angular/core'
 import { AuthService } from '../services/auth.service'
 import { environment } from '../../environments/environment'
-import { firstValueFrom } from 'rxjs'
+import { firstValueFrom, Subject, takeUntil } from 'rxjs'
 import { LocalStorageService } from '../services/state/local-storage.service'
 import { LocalStorageState } from '../models/state.models'
 import { FlashcardSetWithCards } from '../api'
+import { SetSelectionService } from '../services/set-selection.service'
+import { ListChatBoxComponent } from './components/list-chat-box.component'
 
 @Component({
   selector: 'app-flashcard-list',
   standalone: true,
-  imports: [CommonModule, DragDropModule],
+  imports: [CommonModule, DragDropModule, ListChatBoxComponent],
   template: `
-    <div class="flex flex-col h-full p-2">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 overflow-hidden">
-        <!-- Generated (new) flashcards drop zone -->
-        <div class="flex flex-col h-full overflow-hidden">
-          <div class="flex justify-between items-center mb-2">
-            <h3 class="text-lg font-bold flex-shrink-0 dark:text-gray-200">
-              Newly Generated Cards
-            </h3>
-            <button
-              *ngIf="
-                flashcardCDKService.newFlashcards().length > 0 &&
-                flashcardCDKService.selectedSetId()
-              "
-              (click)="addAllCardsToSet()"
-              class="text-sm px-3 py-2 bg-green-600 text-white font-semibold rounded hover:bg-green-700 transition-colors flex items-center gap-1"
-            >
-              <span>Add All to Set</span>
-            </button>
-          </div>
-          <div
-            id="new-flashcards"
-            cdkDropList
-            [cdkDropListData]="flashcardCDKService.newFlashcards()"
-            [cdkDropListConnectedTo]="['selected-flashcards']"
-            (cdkDropListDropped)="onDrop($event)"
-            class="bg-gray-100 dark:bg-gray-800 p-4 rounded border-2 border-dashed border-gray-300 dark:border-gray-700 flex-1 overflow-y-auto"
-          >
+    <div class="h-full w-full overflow-hidden min-h-0 flex flex-col">
+      <div class="flex h-full gap-2">
+        <!-- List Chat Box -->
+        <app-list-chat-box
+          *ngIf="!setSelectionService.getIsManagingSet()"
+          class="flex-shrink-0 h-full w-1/3"
+        ></app-list-chat-box>
+
+        <!-- Main card list area -->
+        <div class="card-list-container flex flex-col flex-1 w-2/3">
+          <div class="flex flex-col h-full p-2 min-h-0">
             <div
-              *ngFor="
-                let card of flashcardCDKService.newFlashcards();
-                trackBy: trackByCard;
-                index as i
-              "
-              cdkDrag
-              class="border rounded-lg p-4 shadow mb-2 cursor-move relative group hover:shadow-lg transition-shadow bg-white dark:bg-gray-700 dark:border-gray-600"
+              class="grid grid-cols-1 md:grid-cols-2 gap-4 h-full overflow-auto"
             >
-              <div class="font-bold mb-2 dark:text-gray-200">Front:</div>
-              <div class="p-2 rounded mb-4 dark:text-gray-300">
-                {{ card.front }}
+              <!-- Generated (new) flashcards drop zone -->
+              <div class="flex flex-col h-full overflow-hidden">
+                <div class="flex justify-between items-center mb-2">
+                  <h3
+                    class="text-lg font-bold flex-shrink-0 dark:text-gray-200"
+                  >
+                    Newly Generated Cards
+                  </h3>
+                  <button
+                    *ngIf="
+                      flashcardCDKService.newFlashcards().length > 0 &&
+                      flashcardCDKService.selectedSetId()
+                    "
+                    (click)="addAllCardsToSet()"
+                    class="text-sm px-3 py-2 bg-green-600 text-white font-semibold rounded hover:bg-green-700 transition-colors flex items-center gap-1"
+                  >
+                    <span>Add All to Set</span>
+                  </button>
+                </div>
+                <div
+                  id="new-flashcards"
+                  cdkDropList
+                  [cdkDropListData]="flashcardCDKService.newFlashcards()"
+                  [cdkDropListConnectedTo]="['selected-flashcards']"
+                  (cdkDropListDropped)="onDrop($event)"
+                  class="bg-gray-100 dark:bg-gray-800 p-4 rounded border-2 border-dashed border-gray-300 dark:border-gray-700 overflow-y-auto min-h-0 flex-1"
+                >
+                  <div
+                    *ngFor="
+                      let card of flashcardCDKService.newFlashcards();
+                      trackBy: trackByCard;
+                      index as i
+                    "
+                    cdkDrag
+                    class="border rounded-lg p-4 shadow mb-2 cursor-move relative group hover:shadow-lg transition-shadow bg-white dark:bg-gray-700 dark:border-gray-600"
+                  >
+                    <div class="font-bold mb-2 dark:text-gray-200">Front:</div>
+                    <div class="p-2 rounded mb-4 dark:text-gray-300">
+                      {{ card.front }}
+                    </div>
+                    <div class="font-bold mb-2 dark:text-gray-200">Back:</div>
+                    <div class="p-2 rounded dark:text-gray-300">
+                      {{ card.back }}
+                    </div>
+                  </div>
+                  <div
+                    *ngIf="flashcardCDKService.newFlashcards().length === 0"
+                    class="text-gray-500 dark:text-gray-400 text-center py-8"
+                  >
+                    No new cards generated yet
+                  </div>
+                </div>
               </div>
-              <div class="font-bold mb-2 dark:text-gray-200">Back:</div>
-              <div class="p-2 rounded dark:text-gray-300">{{ card.back }}</div>
-            </div>
-            <div
-              *ngIf="flashcardCDKService.newFlashcards().length === 0"
-              class="text-gray-500 dark:text-gray-400 text-center py-8"
-            >
-              No new cards generated yet
-            </div>
-          </div>
-        </div>
 
-        <!-- Selected flashcard set drop zone -->
-        <div class="flex flex-col h-full overflow-hidden">
-          <div class="flex justify-between items-center mb-2">
-            <h3 class="text-lg font-bold flex-shrink-0 dark:text-gray-200">
-              {{
-                flashcardCDKService.selectedSetId()
-                  ? 'Cards in Selected Set'
-                  : 'Create or Select a Set'
-              }}
-            </h3>
-            <button
-              *ngIf="flashcardCDKService.selectedSetId()"
-              (click)="syncToBackend()"
-              [disabled]="isSyncing()"
-              class="text-sm px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex items-center gap-1"
-            >
-              <span *ngIf="isSyncing()">Syncing...</span>
-              <span *ngIf="!isSyncing()">Sync to Cloud</span>
-            </button>
-          </div>
-          <div
-            id="selected-flashcards"
-            cdkDropList
-            [cdkDropListData]="flashcardCDKService.selectedSetCards()"
-            [cdkDropListConnectedTo]="['new-flashcards']"
-            (cdkDropListDropped)="onDrop($event)"
-            class="bg-gray-100 dark:bg-gray-800 p-4 rounded border-2 border-dashed border-gray-300 dark:border-gray-700 flex-1 overflow-y-auto"
-          >
-            <div
-              *ngFor="
-                let card of flashcardCDKService.selectedSetCards();
-                trackBy: trackByCard;
-                index as i
-              "
-              cdkDrag
-              class="border rounded-lg p-4 shadow mb-2 cursor-move relative group hover:shadow-lg transition-shadow bg-white dark:bg-gray-700 dark:border-gray-600"
-            >
-              <div class="font-bold mb-2 dark:text-gray-200">Front:</div>
-              <div class="p-2 rounded mb-4 dark:text-gray-300">
-                {{ card.front }}
+              <!-- Selected flashcard set drop zone -->
+              <div class="flex flex-col h-full overflow-hidden">
+                <div class="flex justify-between items-center mb-2">
+                  <h3
+                    class="text-lg font-bold flex-shrink-0 dark:text-gray-200"
+                  >
+                    {{
+                      flashcardCDKService.selectedSetId()
+                        ? 'Cards in Selected Set'
+                        : 'Create or Select a Set'
+                    }}
+                  </h3>
+                </div>
+                <div
+                  id="selected-flashcards"
+                  cdkDropList
+                  [cdkDropListData]="flashcardCDKService.selectedSetCards()"
+                  [cdkDropListConnectedTo]="['new-flashcards']"
+                  (cdkDropListDropped)="onDrop($event)"
+                  class="bg-gray-100 dark:bg-gray-800 p-4 rounded border-2 border-dashed border-gray-300 dark:border-gray-700 overflow-y-auto min-h-0 flex-1"
+                >
+                  <div
+                    *ngFor="
+                      let card of flashcardCDKService.selectedSetCards();
+                      trackBy: trackByCard;
+                      index as i
+                    "
+                    cdkDrag
+                    class="border rounded-lg p-4 shadow mb-2 cursor-move relative group hover:shadow-lg transition-shadow bg-white dark:bg-gray-700 dark:border-gray-600"
+                  >
+                    <div class="font-bold mb-2 dark:text-gray-200">Front:</div>
+                    <div class="p-2 rounded mb-4 dark:text-gray-300">
+                      {{ card.front }}
+                    </div>
+                    <div class="font-bold mb-2 dark:text-gray-200">Back:</div>
+                    <div class="p-2 rounded dark:text-gray-300">
+                      {{ card.back }}
+                    </div>
+                  </div>
+                  <div
+                    *ngIf="flashcardCDKService.selectedSetCards().length === 0"
+                    class="text-gray-500 dark:text-gray-400 text-center py-8"
+                  >
+                    {{
+                      flashcardCDKService.selectedSetId()
+                        ? 'No cards in set yet'
+                        : 'Select or create a set first'
+                    }}
+                  </div>
+                </div>
               </div>
-              <div class="font-bold mb-2 dark:text-gray-200">Back:</div>
-              <div class="p-2 rounded dark:text-gray-300">{{ card.back }}</div>
-            </div>
-            <div
-              *ngIf="flashcardCDKService.selectedSetCards().length === 0"
-              class="text-gray-500 dark:text-gray-400 text-center py-8"
-            >
-              {{
-                flashcardCDKService.selectedSetId()
-                  ? 'No cards in set yet'
-                  : 'Select or create a set first'
-              }}
             </div>
           </div>
-        </div>
-      </div>
-
-      <!-- Sync feedback message -->
-      <div
-        *ngIf="syncStatus()"
-        class="mt-3 px-3 py-2 rounded-md text-sm"
-        [ngClass]="{
-          'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100':
-            syncStatus() === 'success',
-          'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100':
-            syncStatus() === 'error'
-        }"
-      >
-        {{ syncMessage() }}
-      </div>
-
-      <!-- Debug controls (only in dev mode) -->
-      <div
-        *ngIf="showDebugControls"
-        class="mt-3 p-3 bg-gray-100 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700"
-      >
-        <h4 class="font-bold mb-2">Debug Controls</h4>
-        <div class="flex flex-wrap gap-2">
-          <button
-            (click)="resetLocalStorage()"
-            class="px-2 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-          >
-            Reset Storage
-          </button>
-          <button
-            (click)="cleanupDuplicates()"
-            class="px-2 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-          >
-            Remove Duplicates
-          </button>
-          <button
-            (click)="clearNewCards()"
-            class="px-2 py-1 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700"
-          >
-            Clear New Cards
-          </button>
         </div>
       </div>
     </div>
@@ -186,24 +167,76 @@ import { FlashcardSetWithCards } from '../api'
       .cdk-drop-list-dragging .cdk-drag {
         transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
       }
+
+      .card-list-container {
+        @apply flex flex-col overflow-hidden h-full bg-white dark:bg-gray-900 rounded-lg shadow-sm min-h-0;
+        min-width: 0;
+      }
+
+      /* Ensure all nested containers respect height */
+      .card-list-container > div {
+        @apply h-full overflow-hidden min-h-0;
+      }
+
+      /* Grid column sizing */
+      .grid {
+        @apply h-full min-h-0;
+      }
+
+      /* Grid column containers should take full height */
+      .grid > div {
+        @apply h-full min-h-0 flex flex-col;
+      }
+
+      /* Ensure proper sizing within the drop zones */
+      #new-flashcards,
+      #selected-flashcards {
+        @apply overflow-y-auto min-h-0 flex-1;
+      }
     `,
   ],
 })
-export class FlashcardListComponent {
+export class FlashcardListComponent implements OnInit, OnDestroy {
   @Input() flashcards: Flashcard[] = []
   readonly flashcardCDKService = inject(FlashcardCDKService)
   readonly themeService = inject(ThemeService)
   private readonly flashcardService = inject(FlashcardService)
   private readonly authService = inject(AuthService)
   private readonly localStorageService = inject(LocalStorageService)
+  readonly setSelectionService = inject(SetSelectionService)
+  private readonly destroy$ = new Subject<void>()
 
-  // Add state for sync status
-  readonly isSyncing = signal(false)
-  readonly syncStatus = signal<'success' | 'error' | null>(null)
-  readonly syncMessage = signal('')
+  ngOnInit(): void {
+    // Subscribe to set selection changes
+    this.setSelectionService.selectedSetChanged$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((set) => {
+        console.log('FlashcardListComponent received set change:', set)
+        if (set) {
+          // Update the FlashcardCDKService with the newly selected set
+          this.flashcardCDKService.selectSet(set.id)
 
-  // Debug controls
-  readonly showDebugControls = !environment.production
+          // Force the component to detect changes by triggering an update
+          setTimeout(() => {
+            console.log(
+              'Updating selected set cards:',
+              this.flashcardCDKService.selectedSetCards(),
+            )
+          }, 0)
+        }
+      })
+
+    // Initialize with current selected set if available
+    const currentSet = this.setSelectionService.getSelectedSet()
+    if (currentSet) {
+      this.flashcardCDKService.selectSet(currentSet.id)
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next()
+    this.destroy$.complete()
+  }
 
   trackByCard: TrackByFunction<Flashcard> = (
     index: number,
@@ -486,68 +519,6 @@ export class FlashcardListComponent {
   }
 
   /**
-   * Syncs current flashcards to the backend
-   * This method is kept for service functionality but is called from the navbar
-   */
-  async syncToBackend(): Promise<void> {
-    if (this.isSyncing()) return
-
-    this.isSyncing.set(true)
-    this.syncStatus.set(null)
-
-    try {
-      console.log(`API URL from environment: ${environment.apiUrl}`)
-
-      // First ensure local state is properly saved
-      this.saveSet()
-
-      // Check if there are dirty items to sync
-      const dirtyItems = this.flashcardService.getDirtyItems()
-      console.log('Dirty items before sync:', dirtyItems)
-
-      // Then sync to backend
-      await this.flashcardService.syncToBackend()
-
-      // Show appropriate message based on whether changes were synced
-      if (dirtyItems.length === 0) {
-        // No changes to sync
-        this.syncStatus.set('success')
-        this.syncMessage.set('Your cards are already saved to the cloud!')
-      } else {
-        // Changes were synced
-        this.syncStatus.set('success')
-        this.syncMessage.set('Cards saved to cloud successfully!')
-      }
-
-      // Clear success message after 3 seconds
-      setTimeout(() => {
-        if (this.syncStatus() === 'success') {
-          this.syncStatus.set(null)
-        }
-      }, 3000)
-    } catch (error) {
-      console.error('Error syncing to backend:', error)
-      // Provide more detailed error message if available
-      let errorMessage = 'Failed to save cards to cloud. Please try again.'
-
-      if (error instanceof Error) {
-        errorMessage = `Error: ${error.message}`
-      } else if (typeof error === 'object' && error !== null) {
-        try {
-          errorMessage = `Error: ${JSON.stringify(error)}`
-        } catch {
-          // If can't stringify, use default message
-        }
-      }
-
-      this.syncStatus.set('error')
-      this.syncMessage.set(errorMessage)
-    } finally {
-      this.isSyncing.set(false)
-    }
-  }
-
-  /**
    * Saves the updated card positions to local storage
    */
   saveCardPositions(): void {
@@ -614,31 +585,5 @@ export class FlashcardListComponent {
 
     // Also update in FlashcardService
     this.flashcardCDKService.saveSelectedSet()
-  }
-
-  // Implement debug methods
-  resetLocalStorage(): void {
-    if (
-      confirm(
-        'Are you sure you want to reset all flashcard data? This cannot be undone.',
-      )
-    ) {
-      this.localStorageService.resetState()
-      alert('Storage has been reset. The page will now reload.')
-      window.location.reload()
-    }
-  }
-
-  cleanupDuplicates(): void {
-    this.localStorageService.cleanupDuplicates()
-    alert('Duplicate sets have been removed.')
-  }
-
-  clearNewCards(): void {
-    this.flashcardCDKService.newFlashcards.set([])
-    const selectedSetId = this.flashcardCDKService.selectedSetId()
-    if (selectedSetId) {
-      this.localStorageService.markDirty(selectedSetId)
-    }
   }
 }

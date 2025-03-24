@@ -32,6 +32,31 @@ export class FlashcardCDKService {
   selectedSetId = signal<string | null>(null)
   flashcardSets = signal<FlashcardSetWithCards[]>([])
 
+  constructor() {
+    // Initialize the service with data from localStorage
+    const state = this.localStorageService.getState()
+
+    // Set the flashcardSets signal with data from localStorage
+    if (state.flashcardSets && state.flashcardSets.length > 0) {
+      this.flashcardSets.set(state.flashcardSets)
+      console.log(
+        `Initialized FlashcardCDKService with ${state.flashcardSets.length} sets from localStorage`,
+      )
+    }
+
+    // Set the selected set ID if it exists in localStorage
+    if (state.currentSetId) {
+      this.selectedSetId.set(state.currentSetId)
+      console.log(`Initialized selected set ID to ${state.currentSetId}`)
+    } else if (state.flashcardSets && state.flashcardSets.length > 0) {
+      // If no current set ID but we have sets, select the first one
+      this.selectedSetId.set(state.flashcardSets[0].id)
+      console.log(
+        `No selected set ID found, defaulting to first set: ${state.flashcardSets[0].id}`,
+      )
+    }
+  }
+
   async loadFlashcardSets(): Promise<void> {
     try {
       const sets = await firstValueFrom(
@@ -244,5 +269,27 @@ export class FlashcardCDKService {
 
   verifySetExists(setId: string): boolean {
     return this.flashcardSets().some((set) => set.id === setId)
+  }
+
+  /**
+   * Selects a set by ID and updates the selectedSetId signal
+   * @param setId The ID of the set to select
+   */
+  selectSet(setId: string): void {
+    console.log(`FlashcardCDKService: Selecting set ${setId}`)
+    if (!this.verifySetExists(setId)) {
+      console.warn(`Set with ID ${setId} does not exist in the current sets`)
+      return
+    }
+
+    this.selectedSetId.set(setId)
+
+    // Get the current state of the set from localStorage
+    const set = this.localStorageService
+      .getState()
+      .flashcardSets.find((s) => s.id === setId)
+    if (set) {
+      console.log(`Found set ${setId} with ${set.flashcards.length} cards`)
+    }
   }
 }

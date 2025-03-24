@@ -16,7 +16,6 @@ import { AiGridPromptComponent } from './chat/ai-grid-prompt.component'
     CommonModule,
     FormsModule,
     AiModelSelectorComponent,
-    AiPromptComponent,
     AiGridPromptComponent,
   ],
   template: `
@@ -25,11 +24,9 @@ import { AiGridPromptComponent } from './chat/ai-grid-prompt.component'
         <!-- Sidebar Section -->
         <aside class="app-sidebar">
           <app-ai-model-selector />
-          @if (activeTab() === 1) {
-            <app-ai-prompt />
-          } @else {
+
             <app-ai-grid-prompt [activeFeature]="activeTab()" />
-          }
+
         </aside>
 
 

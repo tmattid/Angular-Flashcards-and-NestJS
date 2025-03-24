@@ -27,18 +27,21 @@ interface ChatMessage {
   standalone: true,
   imports: [FormsModule, CommonModule, TuiButton],
   template: `
-    <div class="flex flex-col h-full  rounded-lg shadow">
+    <div class="flex flex-col h-full rounded-lg shadow">
       <!-- Selection Context -->
-      <div *ngIf="selectedRows().length > 0" class="p-4border-b">
-        <div class="text-sm text-gray-600">
+      <div class="p-4 border-b bg-gray-50 dark:bg-gray-900">
+        <div class="text-sm text-gray-600 dark:text-gray-300">
           {{ contextMessage() }}
         </div>
+        @if (selectedRows().length > 0) {
+        <div class="mt-2 text-xs text-blue-600 dark:text-blue-400">
+          Selected cards: {{ selectedRows().length }}
+        </div>
+        }
       </div>
 
       <!-- Chat Messages Area -->
-      <div
-        class="flex-1 overflow-y-auto p-4 space-y-4 min-h-[200px] max-h-[50vh] "
-      >
+      <div class="flex-1 overflow-y-auto p-4 space-y-4 min-h-[2rem]">
         <div
           *ngFor="let message of messages(); let i = index"
           [class]="message.isUser ? 'flex justify-end' : 'flex justify-start'"
@@ -49,14 +52,11 @@ interface ChatMessage {
             [class]="
               message.isUser
                 ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-800'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
             "
             class="rounded-lg p-3 max-w-[70%] shadow-md"
           >
-            <p
-              class="whitespace-pre-wrap break-words"
-              [class.typing-animation]="!message.isUser"
-            >
+            <p class="whitespace-pre-wrap break-words text-sm">
               {{ message.text }}
             </p>
           </div>
@@ -69,17 +69,20 @@ interface ChatMessage {
       </div>
 
       <!-- Input Area -->
-      <div class="border-t p-4">
+      <div class="border-t p-4 bg-gray-50 dark:bg-gray-900">
         <div class="flex gap-2">
-          <textarea
-            [disabled]="isLoading()"
+          <tui-textarea
             [ngModel]="prompt()"
             (ngModelChange)="prompt.set($event)"
-            rows="1"
-            class="flex-1 rounded-lg border border-gray-300 p-2 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200"
-            placeholder="Type your message here..."
-            (keydown.enter)="$event.preventDefault(); sendPrompt()"
-          ></textarea>
+            class="flex-1"
+          >
+            <textarea
+              [disabled]="isLoading()"
+              placeholder="Type your message here..."
+              (keydown.enter)="$event.preventDefault(); sendPrompt()"
+              tuiTextfieldLegacy
+            ></textarea>
+          </tui-textarea>
           <button
             appearance="outline"
             tuiAppearanceMode="checked"
@@ -97,6 +100,11 @@ interface ChatMessage {
   `,
   styles: [
     `
+      :host {
+        display: block;
+        height: 100%;
+      }
+
       @keyframes fadeIn {
         from {
           opacity: 0;
@@ -108,100 +116,13 @@ interface ChatMessage {
         }
       }
 
-      .typewriter {
-        overflow: hidden;
-        border-right: 2px solid transparent;
-        animation: typing 2s steps(40, end), blink-caret 0.75s step-end infinite;
-        white-space: pre-wrap;
-        word-break: break-word;
-      }
-
-      @keyframes typing {
-        from {
-          width: 0;
-          opacity: 0;
-        }
-        to {
-          width: 100%;
-          opacity: 1;
-        }
-      }
-
-      @keyframes blink-caret {
-        from,
-        to {
-          border-color: transparent;
-        }
-        50% {
-          border-color: #666;
-        }
-      }
-
-      @keyframes messagePopIn {
-        0% {
-          opacity: 0;
-          transform: scale(0.8);
-        }
-        50% {
-          transform: scale(1.05);
-        }
-        100% {
-          opacity: 1;
-          transform: scale(1);
-        }
-      }
-
-      @keyframes typing {
-        from {
-          width: 0;
-        }
-        to {
-          width: 100%;
-        }
-      }
-
-      .animate-typing {
-        animation: typing 1s steps(30, end);
-      }
-
-      .message-container {
-        width: fit-content;
-      }
-
-      .message-text {
-        visibility: visible;
-      }
-
-      .ai-message {
-        visibility: hidden;
-        position: relative;
-      }
-
-      .ai-message::after {
-        visibility: visible;
-        position: absolute;
-        top: 0;
-        left: 0;
-        content: attr(data-text);
-        white-space: pre-wrap;
-        overflow: hidden;
-        width: 0;
-        animation: typewriter 2s steps(40, end) forwards;
-      }
-
-      @keyframes typewriter {
-        from {
-          width: 0;
-        }
-        to {
-          width: 100%;
-        }
+      .animate-fadeIn {
+        animation: fadeIn 0.3s ease-out forwards;
       }
 
       .typing-animation {
         overflow: hidden;
         display: inline-block;
-        white-space: pre-wrap;
         animation: typing 0.05s steps(1, end);
         width: fit-content;
       }

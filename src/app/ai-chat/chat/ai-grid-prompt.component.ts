@@ -42,23 +42,21 @@ interface GridPromptContext {
   standalone: true,
   imports: [FormsModule, CommonModule, TuiButton, TuiTextareaModule],
   template: `
-    <div class="flex flex-col h-full  rounded-lg shadow">
+    <div class="flex flex-col h-full rounded-lg shadow">
       <!-- Context Information -->
-      <div class="p-4border-b">
-        <div class="text-sm text-gray-600">
+      <div class="p-4 border-b bg-gray-50 dark:bg-gray-900">
+        <div class="text-sm text-gray-600 dark:text-gray-300">
           {{ contextMessage() }}
         </div>
         @if (selectedRows().length > 0) {
-        <div class="mt-2 text-xs text-blue-600">
+        <div class="mt-2 text-xs text-blue-600 dark:text-blue-400">
           Selected cards: {{ selectedRows().length }}
         </div>
         }
       </div>
 
       <!-- Chat Messages Area -->
-      <div
-        class="flex-1 overflow-y-auto p-4 space-y-4 min-h-[200px] max-h-[50vh]"
-      >
+      <div class="flex-1 overflow-y-auto p-4 space-y-4 min-h-[2rem]">
         <div
           *ngFor="let message of messages(); let i = index"
           [class]="message.isUser ? 'flex justify-end' : 'flex justify-start'"
@@ -69,17 +67,19 @@ interface GridPromptContext {
             [class]="
               message.isUser
                 ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-800'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
             "
             class="rounded-lg p-3 max-w-[70%] shadow-md"
           >
-            <p class="whitespace-pre-wrap break-words">{{ message.text }}</p>
+            <p class="whitespace-pre-wrap break-words text-sm">
+              {{ message.text }}
+            </p>
           </div>
         </div>
       </div>
 
       <!-- Input Area -->
-      <div class="border-t p-4">
+      <div class="border-t p-4 bg-gray-50 dark:bg-gray-900">
         <div class="flex gap-2">
           <tui-textarea
             [ngModel]="prompt()"
@@ -108,6 +108,25 @@ interface GridPromptContext {
       </div>
     </div>
   `,
+  styles: [
+    `
+      :host {
+        display: block;
+        height: 100%;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    `,
+  ],
 })
 export class AiGridPromptComponent implements OnDestroy {
   private readonly aiGridService = inject(AiGridService)
