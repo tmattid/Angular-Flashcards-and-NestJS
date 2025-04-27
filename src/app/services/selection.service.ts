@@ -1,5 +1,5 @@
 import { Injectable, signal, effect } from '@angular/core'
-import { GridRow } from '../ag-grid/ag-grid.component'
+import { GridRow } from '../dashboard/main-grid/ag-grid.component'
 
 @Injectable({
   providedIn: 'root',

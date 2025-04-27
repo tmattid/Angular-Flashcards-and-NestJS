@@ -20,14 +20,14 @@ import {
 import { AllEnterpriseModule, ModuleRegistry } from 'ag-grid-enterprise'
 import { AllCommunityModule } from 'ag-grid-community'
 import { CommonModule } from '@angular/common'
-import { FlashcardService } from '../services/flashcard-http.service'
-import { LocalStorageService } from '../services/state/local-storage.service'
-import { AuthService } from '../services/auth.service'
-import { Flashcard, FlashcardSetWithCards, UpdateFlashcardDto } from '../api'
-import { SetSelectionService } from '../services/set-selection.service'
-import { SelectionService } from '../services/selection.service'
+import { FlashcardService } from '../../services/flashcard-http.service'
+import { LocalStorageService } from '../../services/state/local-storage.service'
+import { AuthService } from '../../services/auth.service'
+import { Flashcard, FlashcardSetWithCards, UpdateFlashcardDto } from '../../api'
+import { SetSelectionService } from '../../services/set-selection.service'
+import { SelectionService } from '../../services/selection.service'
 import { AgGridConfigService } from './ag-grid-config.service'
-import { ThemeService } from '../services/theme.service'
+import { ThemeService } from '../../services/theme.service'
 import { CardCellRendererComponent } from './cell-renderer/card-cell-renderer.component'
 import { animate, style, transition, trigger } from '@angular/animations'
 import { firstValueFrom } from 'rxjs'
@@ -172,7 +172,6 @@ export class AgGridComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     // size columns to fit initially
-    
   }
 
   autoGroupColumnDef = this.gridConfig.autoGroupColumnDef

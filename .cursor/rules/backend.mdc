@@ -1,0 +1,12 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+# Your rule content
+EVERYTHING SHOULD BE TYPE CHECK USING THE API FOLDER WHICH HAS THE OPENAPI MODELS FROM THE BACKEND! Always try to reduce complexity and keep code easy to read and simple when possible. Never use as or any in typescript.
+
+- You can @ files here
+- You can use markdown but dont have to

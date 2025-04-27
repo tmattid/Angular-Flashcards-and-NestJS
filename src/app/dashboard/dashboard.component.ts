@@ -5,10 +5,10 @@ import { AuthService } from '../services/auth.service'
 import { DashboardNavComponent } from './components/dashboard-nav.component'
 import { ProfileInfoComponent } from './components/profile-info.component'
 import { ProfileAvatarComponent } from './components/profile-avatar.component'
-import { AgGridComponent, GridRow } from '../ag-grid/ag-grid.component'
-import { FlashcardListComponent } from '../card-list/flashcard-list.component'
+import { AgGridComponent, GridRow } from './main-grid/ag-grid.component'
 import { FlashcardCDKService } from '../ai-chat/services/flashcard-cdk-service.service'
 import { SetSelectionService } from '../services/set-selection.service'
+import { FlashcardListComponent } from './flashcard-list/flashcard-list.component'
 
 type Tab = 'grid' | 'flashcard-list' | 'profile'
 
