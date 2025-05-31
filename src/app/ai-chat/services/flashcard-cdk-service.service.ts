@@ -25,6 +25,11 @@ export class FlashcardCDKService {
     if (!setId) return []
 
     const set = this.flashcardSets().find((s) => s.id === setId)
+    console.log(
+      `Computing selectedSetCards for set ${setId}: ${
+        set?.flashcards?.length || 0
+      } cards`,
+    )
     return set?.flashcards ?? []
   })
 
@@ -216,7 +221,7 @@ export class FlashcardCDKService {
       if (typeof card !== 'object' || !card.front || !card.back) {
         console.warn('Invalid flashcard format:', card)
         return {
-          id: `temp_${index}`,
+          id: `temp_${crypto.randomUUID()}`,
           front: card?.front || 'Missing front content',
           back: card?.back || 'Missing back content',
           position: index,
@@ -229,7 +234,7 @@ export class FlashcardCDKService {
       }
 
       return {
-        id: `temp_${index}`,
+        id: `temp_${crypto.randomUUID()}`,
         front: card.front,
         back: card.back,
         position: index,
@@ -243,28 +248,9 @@ export class FlashcardCDKService {
 
     // Update the newFlashcards signal directly
     this.newFlashcards.set(flashcards)
-
-    // Create each flashcard
-    flashcards.forEach((card) => {
-      const createDto: CreateFlashcardDto = {
-        front: card.front,
-        back: card.back,
-        position: card.position,
-        setId: currentSetId,
-      }
-      this.flashcardService
-        .createCard(createDto, currentSetId)
-        .pipe(
-          tap((updatedSet: FlashcardSetWithCards) => {
-            if (updatedSet) {
-              this.flashcardSets.update((sets) =>
-                sets.map((s) => (s.id === currentSetId ? updatedSet : s)),
-              )
-            }
-          }),
-        )
-        .subscribe()
-    })
+    console.log(
+      `Set ${flashcards.length} new flashcards ready for user interaction`,
+    )
   }
 
   verifySetExists(setId: string): boolean {
@@ -276,20 +262,66 @@ export class FlashcardCDKService {
    * @param setId The ID of the set to select
    */
   selectSet(setId: string): void {
-    console.log(`FlashcardCDKService: Selecting set ${setId}`)
-    if (!this.verifySetExists(setId)) {
-      console.warn(`Set with ID ${setId} does not exist in the current sets`)
-      return
-    }
-
+    console.log(`Setting selected set ID to ${setId}`)
     this.selectedSetId.set(setId)
 
-    // Get the current state of the set from localStorage
-    const set = this.localStorageService
-      .getState()
-      .flashcardSets.find((s) => s.id === setId)
-    if (set) {
-      console.log(`Found set ${setId} with ${set.flashcards.length} cards`)
-    }
+    // Update localStorage
+    this.localStorageService.updateState((state) => ({
+      ...state,
+      currentSetId: setId,
+    }))
+  }
+
+  /**
+   * Force updates the selected set cards to ensure proper synchronization
+   * This is particularly important when switching between sets
+   */
+  forceUpdateSelectedSetCards(cards: Flashcard[]): void {
+    const setId = this.selectedSetId()
+    if (!setId) return
+
+    console.log(
+      `Force updating selected set cards: ${cards.length} cards for set ${setId}`,
+    )
+
+    // Make sure all the flashcards have the correct setId
+    const updatedCards = cards.map((card, index) => ({
+      ...card,
+      setId: setId,
+      position: index,
+    }))
+
+    // Update the set in the flashcardSets signal
+    this.flashcardSets.update((sets) => {
+      const newSets = sets.map((set) =>
+        set.id === setId ? { ...set, flashcards: updatedCards } : set,
+      )
+
+      // Log the updated set
+      const updatedSet = newSets.find((s) => s.id === setId)
+      console.log(
+        `Updated set ${setId} now has ${
+          updatedSet?.flashcards?.length || 0
+        } cards`,
+      )
+
+      return newSets
+    })
+  }
+
+  /**
+   * Clears the selected set when no set is selected
+   * This ensures we don't show cards from a previously selected set
+   */
+  clearSelectedSet(): void {
+    this.selectedSetId.set(null)
+
+    // Update localStorage
+    this.localStorageService.updateState((state) => ({
+      ...state,
+      currentSetId: null,
+    }))
+
+    console.log('Cleared selected set')
   }
 }

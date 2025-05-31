@@ -1,6 +1,6 @@
 import { Component, Input } from '@angular/core'
 import { CommonModule } from '@angular/common'
-import { UserProfile } from '../../services/auth.service'
+import { UserProfile } from '../../../../services/auth.service'
 
 @Component({
   selector: 'app-profile-info',

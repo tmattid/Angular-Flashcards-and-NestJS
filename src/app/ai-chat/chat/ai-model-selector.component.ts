@@ -36,7 +36,6 @@ import { TuiIcon } from '@taiga-ui/core'
             tuiOption
             type="button"
             [value]="model.id"
-
           >
             <tui-icon
               [icon]="getModelIcon(model.id)"
@@ -71,9 +70,9 @@ export class AiModelSelectorComponent {
   getModelIcon(modelId: ModelType): string {
     // Map model IDs to Taiga UI icons
     const iconMap: Record<ModelType, string> = {
-      'openai/gpt-4o-2024-11-20': 'bot',
+      'meta-llama/llama-4-scout': 'bot',
       'google/gemini-2.0-flash-001': 'aperture',
-      'google/gemini-2.0-flash-lite-preview-02-05:free': 'zap',
+      'google/gemini-2.5-flash-preview-05-20': 'zap',
       // Add other models as needed
     }
     return iconMap[modelId] || 'tuiIconAiLarge'

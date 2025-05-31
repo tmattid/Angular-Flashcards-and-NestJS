@@ -1,7 +1,7 @@
 import { Component } from '@angular/core'
 import { CommonModule } from '@angular/common'
-import { FlashcardSetSelectorComponent } from '../../../flashcard-set-selection/flashcard-set-selector.component'
 import { AiChatComponent } from '../../../ai-chat/ai-chat.component'
+import { FlashcardSetSelectorComponent } from '../../../common/flashcard-set-selection/flashcard-set-selector.component'
 
 @Component({
   selector: 'app-grid-chat-box',

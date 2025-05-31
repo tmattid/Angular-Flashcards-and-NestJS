@@ -1,0 +1,54 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+export class <Feature>ViewComponent {
+  /* ───────────────────── 1. Injected dependencies ─────────────────────── */
+  private readonly http       = inject(HttpClient);
+  private readonly destroyRef = inject(DestroyRef);
+
+  /* ────────────────────── 2. Constants & configuration ────────────────── */
+  private static readonly API_URL = '/api/<feature>';
+  /* ─────────────────────── 3. Mutable signals (state) ─────────────────── */
+  private readonly _items    = signal<MyEntity[]>([]);
+  private readonly _selected = signal<MyEntity | null>(null);
+
+  /* ───────────────────── 4. Computed signals (preferred) ──────────────── */
+  readonly itemCount = computed(() => this._items().length);
+  readonly hasItems  = computed(() => this.itemCount() > 0);
+  readonly vm        = computed(() => ({
+    items   : this._items(),
+    selected: this._selected(),
+    count   : this.itemCount(),
+  }));
+
+  /* ─────── 5. Lifecycle & LIMITED imperative effects (if needed) ──────── */
+  constructor() {
+    this.loadItems();                              // initial fetch
+
+    effect(() => {                                 // side-effect example
+      const chosen = this._selected();
+      if (chosen) console.debug('[<feature>] selected', chosen.id);
+    }).takeUntilDestroyed(this.destroyRef);
+  }
+
+  /* ─────────────────────── 6. Public API (template) ───────────────────── */
+  select(id: number): void {
+    this._selected.set(this._items().find(x => x.id === id) ?? null);
+  }
+
+  refresh(): void {
+    this.loadItems();
+  }
+
+  /* ────────────────────── 7. Private helper functions ─────────────────── */
+  private loadItems(): void {
+    this.http.get<MyEntity[]>(<Feature>ViewComponent.API_URL)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next : list => this._items.set(list),
+        error: err  => console.error('[<feature>] load failed', err),
+      });
+  }
+}

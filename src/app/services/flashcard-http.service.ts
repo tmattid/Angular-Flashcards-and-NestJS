@@ -54,7 +54,13 @@ export class FlashcardService {
     dto: CreateFlashcardDto,
     setId: string,
   ): Observable<FlashcardSetWithCards> {
-    return this.apiService.createCard(dto)
+    console.log(`Creating card in set ${setId}:`, dto)
+    // Ensure setId is properly set in the DTO
+    const cardDto = {
+      ...dto,
+      setId: setId,
+    }
+    return this.apiService.createCard(cardDto)
   }
 
   updateCard(
@@ -84,9 +90,15 @@ export class FlashcardService {
         return
       }
 
-      const flashcardSets = state.flashcardSets as FlashcardSetWithCards[]
+      // Get all the dirty items that need to be synced
+      const dirtyItemIds = this.localStorageService.getDirtyItems()
+      if (dirtyItemIds.length === 0) {
+        resolve()
+        return
+      }
 
-      // Format the data according to the API expectations
+      // Format the sets for API submission
+      const flashcardSets = state.flashcardSets as FlashcardSetWithCards[]
       const formattedSets = flashcardSets.map((set) => ({
         ...set,
         // Convert null to undefined for optional fields
@@ -106,6 +118,8 @@ export class FlashcardService {
       this.apiService.syncFlashcardSets(formattedSets).subscribe({
         next: (response) => {
           console.log('Sync successful:', response)
+          // Clear the dirty flags since we've successfully synced
+          this.localStorageService.clearDirtyItems(dirtyItemIds)
           resolve()
         },
         error: (error) => {

@@ -13,7 +13,7 @@ import { AiGridService } from '../../services/ai-llms/ai-grid.service'
 import { SetSelectionService } from '../../services/set-selection.service'
 import { LocalStorageService } from '../../services/state/local-storage.service'
 import { GridApi, GridReadyEvent } from 'ag-grid-community'
-import { GridRow } from '../../dashboard/main-grid/ag-grid.component'
+import { GridRow } from '../../dashboard/features/grid/update-flashcards/update-flashcards.component'
 import { ModelId } from '../../models/ai-http-service/ai-models.model'
 import { SelectionService } from '../../services/selection.service'
 import { TuiButton } from '@taiga-ui/core'
@@ -141,7 +141,7 @@ export class AiGridPromptComponent implements OnDestroy {
   prompt = signal('')
   isLoading = signal(false)
   selectedRows = this.selectionService.getSelectedRows()
-  currentModel = signal<ModelId>('openai/gpt-4o-2024-11-20')
+  currentModel = signal<ModelId>('meta-llama/llama-4-scout')
 
   contextMessage = computed(() => {
     const selectedSet = this.setSelectionService.getSelectedSet()

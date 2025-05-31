@@ -1,6 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core'
 import { FlashcardSetWithCards } from '../api'
-import { FlashcardCDKService } from '../ai-chat/services/flashcard-cdk-service.service'
 import { Subject } from 'rxjs'
 import { LocalStorageService } from './state/local-storage.service'
 
@@ -8,10 +7,8 @@ import { LocalStorageService } from './state/local-storage.service'
   providedIn: 'root',
 })
 export class SetSelectionService {
-  private readonly flashcardService = inject(FlashcardCDKService)
   private readonly localStorageService = inject(LocalStorageService)
   private selectedSet = signal<FlashcardSetWithCards | null>(null)
-  private isManagingSet = signal(false)
 
   // Subject to notify subscribers when the selected set changes
   private selectedSetChange = new Subject<FlashcardSetWithCards | null>()
@@ -44,16 +41,13 @@ export class SetSelectionService {
 
     // Notify subscribers about the change if we detected a meaningful change
     if (hasChanged) {
-      console.log('DEBUG: Set selection changed, notifying subscribers', set)
+      console.log(
+        'SetSelectionService: Set selection changed to:',
+        set?.title,
+        set?.id,
+      )
+      // console.log('DEBUG: Set selection changed, notifying subscribers', set)
       this.selectedSetChange.next(set)
     }
-  }
-
-  getIsManagingSet(): boolean {
-    return this.isManagingSet()
-  }
-
-  setIsManagingSet(managing: boolean): void {
-    this.isManagingSet.set(managing)
   }
 }

@@ -9,18 +9,18 @@ import {
 import { CommonModule } from '@angular/common'
 import { CdkDragDrop, transferArrayItem } from '@angular/cdk/drag-drop'
 import { DragDropModule } from '@angular/cdk/drag-drop'
-import { Flashcard } from '../../api'
-import { FlashcardCDKService } from '../../ai-chat/services/flashcard-cdk-service.service'
-import { ThemeService } from '../../services/theme.service'
-import { FlashcardService } from '../../services/flashcard-http.service'
+import { Flashcard } from '../../../../api'
+import { FlashcardCDKService } from '../../../../ai-chat/services/flashcard-cdk-service.service'
+import { ThemeService } from '../../../../services/theme.service'
+import { FlashcardService } from '../../../../services/flashcard-http.service'
 import { signal } from '@angular/core'
-import { AuthService } from '../../services/auth.service'
+import { AuthService } from '../../../../services/auth.service'
 import { Subject, takeUntil } from 'rxjs'
-import { LocalStorageService } from '../../services/state/local-storage.service'
-import { LocalStorageState } from '../../models/state.models'
-import { FlashcardSetWithCards } from '../../api'
-import { SetSelectionService } from '../../services/set-selection.service'
-import { ListChatBoxComponent } from './components/list-chat-box.component'
+import { LocalStorageService } from '../../../../services/state/local-storage.service'
+import { LocalStorageState } from '../../../../models/state.models'
+import { FlashcardSetWithCards } from '../../../../api'
+import { SetSelectionService } from '../../../../services/set-selection.service'
+import { ListChatBoxComponent } from './list-chat-box.component'
 
 @Component({
   selector: 'app-flashcard-list',
@@ -31,7 +31,6 @@ import { ListChatBoxComponent } from './components/list-chat-box.component'
       <div class="flex h-full gap-2">
         <!-- List Chat Box -->
         <app-list-chat-box
-          *ngIf="!setSelectionService.getIsManagingSet()"
           class="flex-shrink-0 h-full w-1/3"
         ></app-list-chat-box>
 
@@ -215,13 +214,19 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
           // Update the FlashcardCDKService with the newly selected set
           this.flashcardCDKService.selectSet(set.id)
 
+          // Ensure the cards are properly synchronized
+          this.flashcardCDKService.forceUpdateSelectedSetCards(set.flashcards)
+
           // Force the component to detect changes by triggering an update
           setTimeout(() => {
             console.log(
-              'Updating selected set cards:',
+              'Updated selected set cards:',
               this.flashcardCDKService.selectedSetCards(),
             )
           }, 0)
+        } else {
+          // Clear selected set when none is selected
+          this.flashcardCDKService.clearSelectedSet()
         }
       })
 
@@ -229,6 +234,10 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
     const currentSet = this.setSelectionService.getSelectedSet()
     if (currentSet) {
       this.flashcardCDKService.selectSet(currentSet.id)
+      // Ensure initial cards are properly set
+      this.flashcardCDKService.forceUpdateSelectedSetCards(
+        currentSet.flashcards,
+      )
     }
   }
 
@@ -288,6 +297,7 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
       // Update the container data directly to ensure view updates
       if (event.container.id === 'new-flashcards') {
         this.flashcardCDKService.newFlashcards.set(cards)
+        console.log('Updated order of new flashcards')
       } else if (
         event.container.id === 'selected-flashcards' &&
         selectedSetId
@@ -311,9 +321,8 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
 
         // Mark as dirty for syncing
         this.localStorageService.markDirty(selectedSetId)
+        console.log('Updated order of selected set cards')
       }
-
-      this.updateCardPositions()
     } else {
       // Moving between containers
       console.log('Moving card between containers')
@@ -328,24 +337,34 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
         const newCards = [...this.flashcardCDKService.newFlashcards()]
         newCards.splice(event.previousIndex, 1)
         this.flashcardCDKService.newFlashcards.set(newCards)
+        console.log('Removed card from new flashcards')
 
         // Then, add to destination container with proper properties
         const selectedCards = [...this.flashcardCDKService.selectedSetCards()]
+
+        // Create a proper card with a UUID
         const updatedCard = {
           ...cardToMove,
+          id: crypto.randomUUID(), // Generate a proper UUID
           flashcard_set_id: selectedSetId,
+          setId: selectedSetId,
           position: event.currentIndex,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         }
+
         selectedCards.splice(event.currentIndex, 0, updatedCard)
+        console.log('Added card to selected flashcards:', updatedCard)
 
         // Update positions for all cards
         const updatedSelectedCards = selectedCards.map((card, index) => ({
           ...card,
           position: index,
           flashcard_set_id: selectedSetId,
+          setId: selectedSetId,
         }))
 
-        // Update the selected set in both services
+        // Update the selected set in the LocalStorageService
         this.localStorageService.updateState((state) => ({
           ...state,
           flashcardSets: state.flashcardSets.map((set) =>
@@ -355,14 +374,22 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
           ),
         }))
 
-        // Mark as dirty and save
+        // Force update the CDK service with the new cards
+        this.flashcardCDKService.forceUpdateSelectedSetCards(
+          updatedSelectedCards,
+        )
+
+        // Mark as dirty for syncing later
         this.localStorageService.markDirty(selectedSetId)
-        console.log(`Added card to set ${selectedSetId} and marked as dirty`)
+        console.log(
+          `Added card to set ${selectedSetId} and marked as dirty for later syncing`,
+        )
       } else if (fromSelectedToNew) {
         // Moving from selected to new
         // First, remove from selected set
         const selectedCards = [...this.flashcardCDKService.selectedSetCards()]
         selectedCards.splice(event.previousIndex, 1)
+        console.log('Removed card from selected flashcards')
 
         if (selectedSetId) {
           // Update the selected set
@@ -370,6 +397,7 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
             ...card,
             position: index,
             flashcard_set_id: selectedSetId,
+            setId: selectedSetId,
           }))
 
           this.localStorageService.updateState((state) => ({
@@ -381,7 +409,15 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
             ),
           }))
 
+          // Force update the CDK service
+          this.flashcardCDKService.forceUpdateSelectedSetCards(
+            updatedSelectedCards,
+          )
+
           this.localStorageService.markDirty(selectedSetId)
+          console.log(
+            `Updated selected set ${selectedSetId} and marked as dirty`,
+          )
         }
 
         // Then, add to new flashcards
@@ -389,18 +425,18 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
         // Remove set ID since it's now in the new cards container
         const updatedCard = {
           ...cardToMove,
+          id: `temp_${crypto.randomUUID()}`, // Generate a temp ID
           flashcard_set_id: '', // Use empty string instead of null
           position: event.currentIndex,
         }
         newCards.splice(event.currentIndex, 0, updatedCard)
         this.flashcardCDKService.newFlashcards.set(newCards)
+        console.log('Added card to new flashcards:', updatedCard)
       }
     }
 
-    // Save changes to the flashcard service
-    if (selectedSetId) {
-      this.flashcardCDKService.saveSelectedSet()
-    }
+    // Update card positions in both containers
+    this.updateCardPositions()
   }
 
   private updateCardPositions(): void {
@@ -444,6 +480,12 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
 
         // Mark the set as dirty for syncing
         this.localStorageService.markDirty(selectedSetId)
+        console.log(
+          `Marked set ${selectedSetId} as dirty after position update`,
+        )
+
+        // Also update in FlashcardService
+        this.flashcardCDKService.saveSelectedSet()
       }
     }
   }
@@ -479,9 +521,11 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
 
     // Clear the new cards list immediately to prevent duplicates
     this.flashcardCDKService.newFlashcards.set([])
+    console.log('Cleared new flashcards array')
 
     // Get the current selected set cards
     const currentSetCards = [...this.flashcardCDKService.selectedSetCards()]
+    console.log(`Current set has ${currentSetCards.length} cards before adding`)
 
     // Add all new cards to the end of the current set with proper set ID and positions
     const updatedCards = [
@@ -490,8 +534,15 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
         ...card,
         position: currentSetCards.length + index,
         flashcard_set_id: selectedSetId,
+        setId: selectedSetId,
+        // Generate temporary IDs for local state
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       })),
     ]
+
+    console.log(`Created updated cards array with ${updatedCards.length} cards`)
 
     // Update positions and save to LocalStorageService
     this.localStorageService.updateState((state) => ({
@@ -507,14 +558,18 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
       ),
     }))
 
-    // Mark the set as dirty for syncing
+    // Force update the CDK service to ensure UI updates
+    this.flashcardCDKService.forceUpdateSelectedSetCards(updatedCards)
+    console.log('Forced update of selected set cards in CDK service')
+
+    // Mark the set as dirty for syncing later
     this.localStorageService.markDirty(selectedSetId)
     console.log(
-      `Added ${allNewCards.length} cards to set ${selectedSetId} and marked as dirty`,
+      `Added ${allNewCards.length} cards to set ${selectedSetId} and marked as dirty for later syncing`,
     )
 
-    // Save changes
-    this.saveSet()
+    // Update all card positions to ensure consistency
+    this.updateCardPositions()
   }
 
   /**

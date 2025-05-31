@@ -7,7 +7,7 @@ import {
   signal,
 } from '@angular/core'
 import { CommonModule } from '@angular/common'
-import { FlashcardService } from '../../services/flashcard-http.service'
+import { FlashcardCDKService } from '../../../ai-chat/services/flashcard-cdk-service.service'
 import { TabSelectorComponent } from './tab-selector.component'
 
 @Component({
@@ -51,17 +51,18 @@ export class DashboardNavComponent {
   @Input() userEmail: string = 'User'
   @Output() signOut = new EventEmitter<void>()
   @Output() tabChange = new EventEmitter<
-    'grid' | 'flashcard-list' | 'profile'
+    'grid' | 'flashcard-list' | 'sets' | 'profile'
   >()
   activeTab = signal(0)
-  private readonly flashcardService = inject(FlashcardService)
+  private readonly flashcardService = inject(FlashcardCDKService)
   readonly isSyncing = signal(false)
 
   onTabChange(index: number) {
     this.activeTab.set(index)
-    const tabTypes: ['grid', 'flashcard-list', 'profile'] = [
+    const tabTypes: ['grid', 'flashcard-list', 'sets', 'profile'] = [
       'grid',
       'flashcard-list',
+      'sets',
       'profile',
     ]
     this.tabChange.emit(tabTypes[index])
@@ -72,7 +73,7 @@ export class DashboardNavComponent {
 
     this.isSyncing.set(true)
     try {
-      await this.flashcardService.syncToBackend()
+      await this.flashcardService.saveSelectedSet()
       console.log('Sync successful')
     } catch (error) {
       console.error('Sync failed:', (error as Error).message)

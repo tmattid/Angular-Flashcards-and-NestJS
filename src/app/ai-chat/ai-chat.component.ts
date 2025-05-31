@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common'
 
 import { FlashcardCDKService } from './services/flashcard-cdk-service.service'
 // import { FlashcardListComponent } from '../card-list/flashcard-list.component'
-import { FlashcardSetSelectorComponent } from '../flashcard-set-selection/flashcard-set-selector.component'
+
 import { AiPromptComponent } from './chat/ai-prompt.component'
 import { AiModelSelectorComponent } from './chat/ai-model-selector.component'
 import { AiGridPromptComponent } from './chat/ai-grid-prompt.component'
@@ -35,7 +35,6 @@ import { AiGridPromptComponent } from './chat/ai-grid-prompt.component'
   `,
   styles: [
     `
-
       .app-content-wrapper {
         @apply flex flex-row gap-4 h-full w-full;
       }

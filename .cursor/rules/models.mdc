@@ -1,0 +1,12 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+[Flashcard.ts](mdc:src/app/api/models/Flashcard.ts)
+[CreateFlashcardDto.ts](mdc:src/app/api/models/CreateFlashcardDto.ts)
+[CreateFlashcardSetDto.ts](mdc:src/app/api/models/CreateFlashcardSetDto.ts)
+[FlashcardResponse.ts](mdc:src/app/api/models/FlashcardResponse.ts)
+[FlashcardSetWithCards.ts](mdc:src/app/api/models/FlashcardSetWithCards.ts)
+[UpdateFlashcardDto.ts](mdc:src/app/api/models/UpdateFlashcardDto.ts)
+[UpdateFlashcardSetDto.ts](mdc:src/app/api/models/UpdateFlashcardSetDto.ts)

@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core'
 import { Flashcard, FlashcardSetWithCards } from '../../api'
 import { LocalStorageState, StateUpdater } from '../../models/state.models'
+import { Subject } from 'rxjs'
 
 @Injectable({
   providedIn: 'root',
@@ -17,6 +18,9 @@ export class LocalStorageService {
     currentSetId: null,
   })
   private dirtyItems = signal<ReadonlyArray<string>>([])
+
+  // Subject to notify subscribers when state changes
+  public readonly stateChanged$ = new Subject<LocalStorageState>()
 
   constructor() {
     this.loadFromStorage()
@@ -107,6 +111,10 @@ export class LocalStorageService {
         ),
       }
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(validatedState))
+
+      // Notify subscribers that state has changed
+      this.stateChanged$.next(validatedState)
+
       return validatedState
     })
   }
@@ -144,12 +152,29 @@ export class LocalStorageService {
   }
 
   removeSet(setId: string): void {
-    this.updateState((current: LocalStorageState) => ({
-      ...current,
-      flashcardSets: current.flashcardSets.filter(
+    this.updateState((current: LocalStorageState) => {
+      // Filter out the deleted set
+      const updatedSets = current.flashcardSets.filter(
         (set: FlashcardSetWithCards) => set.id !== setId,
-      ),
-    }))
+      )
+
+      // Update currentSetId if the deleted set was the current one
+      const updatedCurrentSetId =
+        current.currentSetId === setId
+          ? updatedSets.length > 0
+            ? updatedSets[0].id
+            : null
+          : current.currentSetId
+
+      return {
+        ...current,
+        flashcardSets: updatedSets,
+        currentSetId: updatedCurrentSetId,
+      }
+    })
+
+    // Mark item as dirty for syncing
+    this.markDirty(setId)
   }
 
   resetState(): void {

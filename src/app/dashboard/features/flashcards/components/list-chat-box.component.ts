@@ -1,7 +1,7 @@
 import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms'
-import { AiModelSelectorComponent } from '../../../ai-chat/chat/ai-model-selector.component'
+import { AiModelSelectorComponent } from '../../../../ai-chat/chat/ai-model-selector.component'
 import {
   catchError,
   EMPTY,
@@ -12,15 +12,15 @@ import {
   takeUntil,
   timer,
 } from 'rxjs'
-import { AiService } from '../../../services/ai-llms/ai.service'
-import { FlashcardCDKService } from '../../../ai-chat/services/flashcard-cdk-service.service'
-import { EdgeFunctionResponse } from '../../../models/ai-http-service/ai.types'
+import { AiService } from '../../../../services/ai-llms/ai.service'
+import { FlashcardCDKService } from '../../../../ai-chat/services/flashcard-cdk-service.service'
+import { EdgeFunctionResponse } from '../../../../models/ai-http-service/ai.types'
 import { TuiButton } from '@taiga-ui/core'
 
-import { SetSelectionService } from '../../../services/set-selection.service'
-import { LocalStorageService } from '../../../services/state/local-storage.service'
-import { FlashcardSetWithCards } from '../../../api'
-import { FlashcardSetSelectorComponent } from '../../../common/flashcard-set-selection/flashcard-set-selector.component'
+import { SetSelectionService } from '../../../../services/set-selection.service'
+import { LocalStorageService } from '../../../../services/state/local-storage.service'
+import { FlashcardSetWithCards } from '../../../../api'
+import { FlashcardSetSelectorComponent } from '../../../../common/flashcard-set-selection/flashcard-set-selector.component'
 
 interface ChatMessage {
   text: string

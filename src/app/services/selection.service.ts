@@ -1,5 +1,5 @@
 import { Injectable, signal, effect } from '@angular/core'
-import { GridRow } from '../dashboard/main-grid/ag-grid.component'
+import { GridRow } from '../dashboard/features/grid/update-flashcards/update-flashcards.component'
 
 @Injectable({
   providedIn: 'root',

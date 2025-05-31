@@ -1,100 +1,106 @@
 export const AVAILABLE_MODELS = [
-  'openai/gpt-4o-2024-11-20',
+  'meta-llama/llama-4-scout',
   'google/gemini-2.0-flash-001',
-  'google/gemini-2.0-flash-lite-preview-02-05:free',
-] as const;
+  'google/gemini-2.5-flash-preview-05-20',
+] as const
 
-export type ModelType = (typeof AVAILABLE_MODELS)[number];
+export type ModelType = typeof AVAILABLE_MODELS[number]
 
 export const OPENROUTER_MODELS = {
-  'google/gemini-2.0-flash-lite-preview-02-05:free': {
-    name: 'Gemini 2.0 Flash lite preview',
-    description: 'Google\'s latest model - Preview',
+  'google/gemini-2.5-flash-preview-05-20': {
+    name: 'Gemini 2.5 Pro ',
+    description: "Google's latest model - Preview",
     context_length: 200000,
-    tokens_per_second: 1000,
+    tokens_per_second: 1000,  
   },
   'google/gemini-2.0-flash-001': {
     name: 'Gemini 2.0 Flash 001',
-    description: 'Google\'s latest model - Preview',
+    description: "Google's latest model - Preview",
     context_length: 128000,
     tokens_per_second: 1000,
   },
-  'openai/gpt-4o-2024-11-20': {
-    name: 'Open AI GPT-40',
-    description: 'Anthropic\'s latest model',
-    context_length: 200000,
+  'meta-llama/llama-4-scout': {
+    name: 'Llama 4 Scout',
+    description: "Meta's latest model",
+    context_length: 100000,
     tokens_per_second: 1000,
   },
-} as const;
+} as const
 
-export type ModelId = keyof typeof OPENROUTER_MODELS;
+export type ModelId = keyof typeof OPENROUTER_MODELS
 
 export interface OpenRouterModel {
-  name: string;
-  description: string;
-  context_length: number;
-  tokens_per_second: number;
+  name: string
+  description: string
+  context_length: number
+  tokens_per_second: number
 }
 
 export interface Model extends OpenRouterModel {
-  id: ModelId;
+  id: ModelId
 }
 
 export const MODEL_DETAILS: Model[] = Object.entries(OPENROUTER_MODELS).map(
   ([id, details]) => ({
     id: id as ModelId,
     ...details,
-  })
-);
+  }),
+)
 
 // OpenRouter API Types
 export interface OpenRouterRequest {
-  model: ModelId;
-  messages: OpenRouterMessage[];
-  temperature?: number;
-  max_tokens?: number;
-  stream?: boolean;
+  model: ModelId
+  messages: OpenRouterMessage[]
+  temperature?: number
+  max_tokens?: number
+  stream?: boolean
   response_format?: {
-    type: 'json_object';
+    type: 'json_object'
     schema?: {
-      type: 'object';
+      type: 'object'
       properties: {
         cards: {
-          type: 'array';
+          type: 'array'
           items: {
-            type: 'object';
+            type: 'object'
             properties: {
-              front: { type: 'string', description: 'The question or prompt side of the flashcard' };
-              back: { type: 'string', description: 'The answer or explanation side of the flashcard' };
-            };
-            required: ['front', 'back'];
-          };
-          minItems: 3;
-          maxItems: 5;
-          description: 'Generate between 3 and 5 flashcards';
-        };
-      };
-      required: ['cards'];
-    };
-  };
+              front: {
+                type: 'string'
+                description: 'The question or prompt side of the flashcard'
+              }
+              back: {
+                type: 'string'
+                description: 'The answer or explanation side of the flashcard'
+              }
+            }
+            required: ['front', 'back']
+          }
+          minItems: 3
+          maxItems: 5
+          description: 'Generate between 3 and 5 flashcards'
+        }
+      }
+      required: ['cards']
+    }
+  }
 }
 
 export interface OpenRouterMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-  name?: string;
+  role: 'system' | 'user' | 'assistant'
+  content: string
+  name?: string
 }
 
 export interface OpenRouterResponse {
-  id: string;
+  id: string
   choices: Array<{
-    message: OpenRouterMessage;
-    finish_reason: 'stop' | 'length' | 'content_filter';
-  }>;
-  model: ModelId;
+    message: OpenRouterMessage
+    finish_reason: 'stop' | 'length' | 'content_filter'
+  }>
+  model: ModelId
   usage: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  };
+    prompt_tokens: number
+    completion_tokens: number
+    total_tokens: number
+  }
 }

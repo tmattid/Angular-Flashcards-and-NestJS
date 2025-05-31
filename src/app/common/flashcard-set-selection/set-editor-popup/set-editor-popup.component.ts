@@ -4,8 +4,8 @@ import { FormsModule } from '@angular/forms'
 import { ButtonModule } from 'primeng/button'
 import { InputTextModule } from 'primeng/inputtext'
 import { DynamicDialogRef, DynamicDialogConfig } from 'primeng/dynamicdialog'
-import { FlashcardSetWithCards } from '../../api'
-import { FlashcardCDKService } from '../../ai-chat/services/flashcard-cdk-service.service'
+import { FlashcardSetWithCards } from '../../../api'
+import { FlashcardCDKService } from '../../../ai-chat/services/flashcard-cdk-service.service'
 import { IconPickerComponent } from '../../icon-picker/icon-picker.component'
 
 @Component({
