@@ -596,12 +596,7 @@ export class SetManagementSidebarComponent implements OnInit, OnDestroy {
       // Select the new set
       this.setSelectionService.setSelectedSet(newSet)
 
-      // Try to sync to backend
-      try {
-        await this.flashcardService.syncToBackend()
-      } catch (error) {
-        console.warn('Failed to sync new set to backend:', error)
-      }
+      // Set is marked as dirty and will sync when user clicks save button
 
       // Reset form
       this.cancelCreate()
@@ -658,12 +653,7 @@ export class SetManagementSidebarComponent implements OnInit, OnDestroy {
       // Mark as dirty for syncing
       this.localStorageService.markDirty(set.id)
 
-      // Try to sync to backend
-      try {
-        await this.flashcardService.syncToBackend()
-      } catch (error) {
-        console.warn('Failed to sync set title change to backend:', error)
-      }
+      // Set is marked as dirty and will sync when user clicks save button
 
       this.cancelEditSet()
     } catch (error) {

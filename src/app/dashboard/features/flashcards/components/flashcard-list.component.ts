@@ -5,6 +5,8 @@ import {
   TrackByFunction,
   OnInit,
   OnDestroy,
+  signal,
+  computed,
 } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { CdkDragDrop, transferArrayItem } from '@angular/cdk/drag-drop'
@@ -13,9 +15,8 @@ import { Flashcard } from '../../../../api'
 import { FlashcardCDKService } from '../../../../ai-chat/services/flashcard-cdk-service.service'
 import { ThemeService } from '../../../../services/theme.service'
 import { FlashcardService } from '../../../../services/flashcard-http.service'
-import { signal } from '@angular/core'
 import { AuthService } from '../../../../services/auth.service'
-import { Subject, takeUntil } from 'rxjs'
+import { Subject, takeUntil, debounceTime } from 'rxjs'
 import { LocalStorageService } from '../../../../services/state/local-storage.service'
 import { LocalStorageState } from '../../../../models/state.models'
 import { FlashcardSetWithCards } from '../../../../api'
@@ -211,21 +212,9 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
       .subscribe((set) => {
         console.log('FlashcardListComponent received set change:', set)
         if (set) {
-          // Update the FlashcardCDKService with the newly selected set
           this.flashcardCDKService.selectSet(set.id)
-
-          // Ensure the cards are properly synchronized
           this.flashcardCDKService.forceUpdateSelectedSetCards(set.flashcards)
-
-          // Force the component to detect changes by triggering an update
-          setTimeout(() => {
-            console.log(
-              'Updated selected set cards:',
-              this.flashcardCDKService.selectedSetCards(),
-            )
-          }, 0)
         } else {
-          // Clear selected set when none is selected
           this.flashcardCDKService.clearSelectedSet()
         }
       })
@@ -234,7 +223,6 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
     const currentSet = this.setSelectionService.getSelectedSet()
     if (currentSet) {
       this.flashcardCDKService.selectSet(currentSet.id)
-      // Ensure initial cards are properly set
       this.flashcardCDKService.forceUpdateSelectedSetCards(
         currentSet.flashcards,
       )
@@ -319,8 +307,10 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
           ),
         }))
 
-        // Mark as dirty for syncing
-        this.localStorageService.markDirty(selectedSetId)
+        // Mark individual cards as dirty for efficient syncing
+        updatedCards.forEach((card) => {
+          this.localStorageService.markCardDirty(selectedSetId, card.id)
+        })
         console.log('Updated order of selected set cards')
       }
     } else {
@@ -342,10 +332,12 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
         // Then, add to destination container with proper properties
         const selectedCards = [...this.flashcardCDKService.selectedSetCards()]
 
-        // Create a proper card with a UUID
+        // Create a proper card with a UUID for backend sync
         const updatedCard = {
           ...cardToMove,
-          id: crypto.randomUUID(), // Generate a proper UUID
+          id: cardToMove.id.startsWith('temp_')
+            ? crypto.randomUUID()
+            : cardToMove.id,
           flashcard_set_id: selectedSetId,
           setId: selectedSetId,
           position: event.currentIndex,
@@ -379,8 +371,8 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
           updatedSelectedCards,
         )
 
-        // Mark as dirty for syncing later
-        this.localStorageService.markDirty(selectedSetId)
+        // Mark individual card as dirty for efficient syncing
+        this.localStorageService.markCardDirty(selectedSetId, updatedCard.id)
         console.log(
           `Added card to set ${selectedSetId} and marked as dirty for later syncing`,
         )
@@ -414,7 +406,10 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
             updatedSelectedCards,
           )
 
-          this.localStorageService.markDirty(selectedSetId)
+          // Mark all remaining cards as dirty since their positions changed
+          updatedSelectedCards.forEach((card) => {
+            this.localStorageService.markCardDirty(selectedSetId, card.id)
+          })
           console.log(
             `Updated selected set ${selectedSetId} and marked as dirty`,
           )
@@ -435,8 +430,8 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
       }
     }
 
-    // Update card positions in both containers
-    this.updateCardPositions()
+    // Card positions are already updated in the drop logic above
+    console.log('Drop operation completed')
   }
 
   private updateCardPositions(): void {
@@ -535,7 +530,7 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
         position: currentSetCards.length + index,
         flashcard_set_id: selectedSetId,
         setId: selectedSetId,
-        // Generate temporary IDs for local state
+        // Generate proper UUIDs for backend sync
         id: crypto.randomUUID(),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -552,7 +547,7 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
           ? {
               ...set,
               flashcards: updatedCards,
-              updated_at: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
             }
           : set,
       ),
@@ -562,14 +557,19 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
     this.flashcardCDKService.forceUpdateSelectedSetCards(updatedCards)
     console.log('Forced update of selected set cards in CDK service')
 
-    // Mark the set as dirty for syncing later
-    this.localStorageService.markDirty(selectedSetId)
+    // Mark all new cards as dirty for efficient syncing
+    allNewCards.forEach((card) => {
+      // Use the final UUID that was generated for the card
+      const finalCard = updatedCards.find(
+        (c) => c.front === card.front && c.back === card.back,
+      )
+      if (finalCard) {
+        this.localStorageService.markCardDirty(selectedSetId, finalCard.id)
+      }
+    })
     console.log(
       `Added ${allNewCards.length} cards to set ${selectedSetId} and marked as dirty for later syncing`,
     )
-
-    // Update all card positions to ensure consistency
-    this.updateCardPositions()
   }
 
   /**
@@ -624,7 +624,7 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
             return {
               ...set,
               flashcards: updatedFlashcards,
-              updated_at: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
             }
           }
           return set
@@ -633,11 +633,10 @@ export class FlashcardListComponent implements OnInit, OnDestroy {
       return updatedState
     })
 
-    // Ensure we mark the set as dirty so it will be synced
-    this.localStorageService.markDirty(selectedSetId)
+    // Mark all cards as dirty since their positions changed
+    cards.forEach((card) => {
+      this.localStorageService.markCardDirty(selectedSetId, card.id)
+    })
     console.log(`Marked set ${selectedSetId} as dirty after position update`)
-
-    // Also update in FlashcardService
-    this.flashcardCDKService.saveSelectedSet()
   }
 }

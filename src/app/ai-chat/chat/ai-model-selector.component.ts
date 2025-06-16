@@ -70,9 +70,11 @@ export class AiModelSelectorComponent {
   getModelIcon(modelId: ModelType): string {
     // Map model IDs to Taiga UI icons
     const iconMap: Record<ModelType, string> = {
-      'meta-llama/llama-4-scout': 'bot',
-      'google/gemini-2.0-flash-001': 'aperture',
       'google/gemini-2.5-flash-preview-05-20': 'zap',
+      'mistralai/ministral-3b': 'bot',
+      'openai/gpt-4.1-nano': 'air-vent',
+      'meta-llama/llama-3.3-8b-instruct:free': 'battery-charging',
+      'deepseek/deepseek-chat-v3-0324': 'brain-circuit',
       // Add other models as needed
     }
     return iconMap[modelId] || 'tuiIconAiLarge'

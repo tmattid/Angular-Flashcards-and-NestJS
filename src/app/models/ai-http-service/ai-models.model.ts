@@ -1,7 +1,9 @@
 export const AVAILABLE_MODELS = [
-  'meta-llama/llama-4-scout',
-  'google/gemini-2.0-flash-001',
+  'mistralai/ministral-3b',
   'google/gemini-2.5-flash-preview-05-20',
+  'openai/gpt-4.1-nano',
+  'meta-llama/llama-3.3-8b-instruct:free',
+  'deepseek/deepseek-chat-v3-0324',
 ] as const
 
 export type ModelType = typeof AVAILABLE_MODELS[number]
@@ -11,17 +13,30 @@ export const OPENROUTER_MODELS = {
     name: 'Gemini 2.5 Pro ',
     description: "Google's latest model - Preview",
     context_length: 200000,
-    tokens_per_second: 1000,  
+    tokens_per_second: 1000,
   },
-  'google/gemini-2.0-flash-001': {
-    name: 'Gemini 2.0 Flash 001',
-    description: "Google's latest model - Preview",
+  'mistralai/ministral-3b': {
+    name: 'Mistral 3b',
+    description: "Mistral's latest model",
     context_length: 128000,
     tokens_per_second: 1000,
   },
-  'meta-llama/llama-4-scout': {
-    name: 'Llama 4 Scout',
+  'openai/gpt-4.1-nano': {
+    name: 'GPT 4.1 Nano',
+    description: "OpenAI's latest model",
+    context_length: 100000,
+    tokens_per_second: 1000,
+  },
+  'meta-llama/llama-3.3-8b-instruct:free': {
+    name: 'Llama 3.3 8b Instruct',
     description: "Meta's latest model",
+    context_length: 100000,
+    tokens_per_second: 1000,
+  },
+
+  'deepseek/deepseek-chat-v3-0324': {
+    name: 'DeepSeek Chat V3 0324',
+    description: "DeepSeek's latest model",
     context_length: 100000,
     tokens_per_second: 1000,
   },

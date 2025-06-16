@@ -10,13 +10,20 @@ import { CommonModule } from '@angular/common'
 import { Subject, takeUntil } from 'rxjs'
 
 import { AiChatComponent } from '../../../../ai-chat/ai-chat.component'
+import { AiModelSelectorComponent } from '../../../../ai-chat/chat/ai-model-selector.component'
 import { SetManagementSidebarComponent } from '../update-flashcards/set-sidebar/set-management-sidebar/set-management-sidebar.component'
 import { SetSelectionService } from '../../../../services/set-selection.service'
+import { AiService } from '../../../../services/ai-llms/ai.service'
 
 @Component({
   selector: 'app-grid-chat-box',
   standalone: true,
-  imports: [CommonModule, SetManagementSidebarComponent, AiChatComponent],
+  imports: [
+    CommonModule,
+    SetManagementSidebarComponent,
+    AiChatComponent,
+    AiModelSelectorComponent,
+  ],
   template: `
     <div class="chat-box-container">
       <!-- Header Section -->
@@ -82,6 +89,23 @@ import { SetSelectionService } from '../../../../services/set-selection.service'
         </div>
       </div>
 
+      <!-- Model Selector Bar -->
+      <div class="model-selector-bar" [class.hidden]="!showChatPanel()">
+        <div class="model-selector-content">
+          <div class="model-info">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              AI Model:
+            </span>
+            <span class="text-sm text-gray-600 dark:text-gray-400">
+              {{ aiService.selectedModel().name }}
+            </span>
+          </div>
+          <div class="model-selector-wrapper">
+            <app-ai-model-selector />
+          </div>
+        </div>
+      </div>
+
       <!-- Main Content Area -->
       <div class="chat-box-content" [class]="contentLayoutClass()">
         <!-- Sets Panel -->
@@ -124,9 +148,9 @@ import { SetSelectionService } from '../../../../services/set-selection.service'
               AI Assistant
             </h3>
             <div class="chat-status">
-              <div class="status-indicator online"></div>
+              <div class="status-indicator" [class]="aiStatusClass()"></div>
               <span class="text-xs text-gray-500 dark:text-gray-400">
-                Ready
+                {{ aiStatusText() }}
               </span>
             </div>
           </div>
@@ -195,6 +219,24 @@ import { SetSelectionService } from '../../../../services/set-selection.service'
         @apply hover:bg-gray-50 dark:hover:bg-gray-600;
       }
 
+      .model-selector-bar {
+        @apply flex-shrink-0 bg-gray-50/80 dark:bg-gray-700/80 border-b border-gray-200 dark:border-gray-600;
+        padding: 0.75rem 1.25rem;
+        transition: all 0.3s ease-in-out;
+      }
+
+      .model-selector-content {
+        @apply flex items-center justify-between w-full;
+      }
+
+      .model-info {
+        @apply flex items-center gap-2;
+      }
+
+      .model-selector-wrapper {
+        @apply max-w-xs;
+      }
+
       .chat-box-content {
         @apply flex-1 flex overflow-hidden;
         min-height: 0;
@@ -261,11 +303,21 @@ import { SetSelectionService } from '../../../../services/set-selection.service'
 
       .status-indicator {
         @apply w-2 h-2 rounded-full;
+        transition: all 0.3s ease-in-out;
       }
 
       .status-indicator.online {
         @apply bg-green-500;
         box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+      }
+
+      .status-indicator.busy {
+        @apply bg-yellow-500;
+        box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.2);
+      }
+
+      .status-indicator.offline {
+        @apply bg-gray-400;
       }
 
       .panel-content {
@@ -316,6 +368,14 @@ import { SetSelectionService } from '../../../../services/set-selection.service'
           @apply flex-1 justify-center;
         }
 
+        .model-selector-content {
+          @apply flex-col gap-2 items-start;
+        }
+
+        .model-selector-wrapper {
+          @apply w-full max-w-none;
+        }
+
         .panel-resizer {
           @apply hidden;
         }
@@ -335,6 +395,7 @@ import { SetSelectionService } from '../../../../services/set-selection.service'
 })
 export class GridChatBoxComponent implements OnInit, OnDestroy {
   private readonly setSelectionService = inject(SetSelectionService)
+  readonly aiService = inject(AiService)
   private readonly destroy$ = new Subject<void>()
 
   // Panel visibility state
@@ -382,6 +443,20 @@ export class GridChatBoxComponent implements OnInit, OnDestroy {
   readonly chatPanelButtonClass = computed(() =>
     this.showChatPanel() ? 'toggle-button active' : 'toggle-button inactive',
   )
+
+  // AI status indicators
+  readonly aiStatusClass = computed(() => {
+    const isLoading = this.isLoading()
+    if (isLoading) return 'status-indicator busy'
+    return 'status-indicator online'
+  })
+
+  readonly aiStatusText = computed(() => {
+    const isLoading = this.isLoading()
+    const modelName = this.aiService.selectedModel().name
+    if (isLoading) return 'Processing...'
+    return `Ready (${modelName})`
+  })
 
   // Resizing state
   private isResizing = false

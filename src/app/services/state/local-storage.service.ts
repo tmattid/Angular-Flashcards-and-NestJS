@@ -9,6 +9,7 @@ import { Subject } from 'rxjs'
 export class LocalStorageService {
   private readonly STORAGE_KEY = 'flashcard_app_state'
   private readonly DIRTY_KEY = 'dirty_items'
+  private readonly DIRTY_CARDS_KEY = 'dirty_cards'
   public readonly state = signal<LocalStorageState>({
     isDarkMode: false,
     isCardView: false,
@@ -18,12 +19,17 @@ export class LocalStorageService {
     currentSetId: null,
   })
   private dirtyItems = signal<ReadonlyArray<string>>([])
+  // Track dirty flashcards: { setId: string[], ... }
+  private dirtyCards = signal<Record<string, string[]>>({})
 
   // Subject to notify subscribers when state changes
   public readonly stateChanged$ = new Subject<LocalStorageState>()
 
   constructor() {
     this.loadFromStorage()
+    this.loadDirtyItems()
+    this.loadDirtyCards()
+    this.cleanupOrphanedDirtyItems()
   }
 
   /**
@@ -120,9 +126,12 @@ export class LocalStorageService {
   }
 
   markDirty(itemId: string): void {
-    this.dirtyItems.update((items) =>
-      items.includes(itemId) ? items : [...items, itemId],
-    )
+    this.dirtyItems.update((items) => {
+      const newItems = items.includes(itemId) ? items : [...items, itemId]
+      // Persist dirty items to localStorage
+      localStorage.setItem(this.DIRTY_KEY, JSON.stringify(newItems))
+      return newItems
+    })
   }
 
   getDirtyItems(): ReadonlyArray<string> {
@@ -130,9 +139,45 @@ export class LocalStorageService {
   }
 
   clearDirtyItems(itemIds: ReadonlyArray<string>): void {
-    this.dirtyItems.update((items) =>
-      items.filter((id) => !itemIds.includes(id)),
-    )
+    this.dirtyItems.update((items) => {
+      const filteredItems = items.filter((id) => !itemIds.includes(id))
+      // Persist updated dirty items to localStorage
+      localStorage.setItem(this.DIRTY_KEY, JSON.stringify(filteredItems))
+      return filteredItems
+    })
+  }
+
+  markCardDirty(setId: string, cardId: string): void {
+    this.dirtyCards.update((cards) => {
+      const newCards = { ...cards }
+      if (!newCards[setId]) {
+        newCards[setId] = []
+      }
+      if (!newCards[setId].includes(cardId)) {
+        newCards[setId] = [...newCards[setId], cardId]
+      }
+      // Persist dirty cards to localStorage
+      localStorage.setItem(this.DIRTY_CARDS_KEY, JSON.stringify(newCards))
+      // Also mark the set as dirty
+      this.markDirty(setId)
+      return newCards
+    })
+  }
+
+  getDirtyCards(): Record<string, string[]> {
+    return this.dirtyCards()
+  }
+
+  clearDirtyCards(setIds: string[]): void {
+    this.dirtyCards.update((cards) => {
+      const newCards = { ...cards }
+      setIds.forEach((setId) => {
+        delete newCards[setId]
+      })
+      // Persist updated dirty cards to localStorage
+      localStorage.setItem(this.DIRTY_CARDS_KEY, JSON.stringify(newCards))
+      return newCards
+    })
   }
 
   loadFromApi(apiResponse: FlashcardSetWithCards[]): void {
@@ -186,6 +231,7 @@ export class LocalStorageService {
       flashcardSets: [],
       currentSetId: null,
     })
+    this.dirtyItems.set([])
     this.clear()
   }
 
@@ -210,5 +256,61 @@ export class LocalStorageService {
       const parsed = JSON.parse(saved) as LocalStorageState
       this.validateAndSetState(parsed)
     }
+  }
+
+  private loadDirtyItems(): void {
+    const saved = localStorage.getItem(this.DIRTY_KEY)
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as string[]
+        this.dirtyItems.set(parsed)
+      } catch (error) {
+        console.error('Error parsing dirty items from localStorage:', error)
+        this.dirtyItems.set([])
+      }
+    }
+  }
+
+  private loadDirtyCards(): void {
+    const saved = localStorage.getItem(this.DIRTY_CARDS_KEY)
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as Record<string, string[]>
+        this.dirtyCards.set(parsed)
+      } catch (error) {
+        console.error('Error parsing dirty cards from localStorage:', error)
+        this.dirtyCards.set({})
+      }
+    }
+  }
+
+  /**
+   * Clean up any orphaned dirty items that don't correspond to actual sets
+   * This should be called on initialization to clean up any leftover dirty items
+   */
+  private cleanupOrphanedDirtyItems(): void {
+    const currentState = this.getState()
+    const validSetIds = currentState.flashcardSets.map((set) => set.id)
+    const currentDirtyItems = this.getDirtyItems()
+    const orphanedItems = currentDirtyItems.filter(
+      (id) => !validSetIds.includes(id),
+    )
+
+    if (orphanedItems.length > 0) {
+      console.warn(
+        'Found orphaned dirty items during initialization, cleaning up:',
+        orphanedItems,
+      )
+      this.clearDirtyItems(orphanedItems)
+    }
+  }
+
+  /**
+   * Force clear all dirty items (useful for debugging)
+   */
+  clearAllDirtyItems(): void {
+    this.dirtyItems.set([])
+    localStorage.removeItem(this.DIRTY_KEY)
+    console.log('Cleared all dirty items')
   }
 }

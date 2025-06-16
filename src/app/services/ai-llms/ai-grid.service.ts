@@ -71,30 +71,57 @@ export class AiGridService {
       )
   }
 
-  applyUpdatesToLocalStorage(updates: GridAiResponse['updates']) {
-    if (updates && updates.length > 0) {
-      this.localStorageService.updateState((current) => ({
-        ...current,
-        flashcardSets: current.flashcardSets.map(
-          (set: FlashcardSetWithCards) => ({
-            ...set,
-            flashcards: set.flashcards.map((card: Flashcard) => {
-              const update = updates.find((u) => u.flashcardId === card.id)
-              if (update) {
-                this.localStorageService.markDirty(card.id)
-                return {
-                  ...card,
-                  ...update.changes,
-                  difficulty: update.changes.difficulty
-                    ? { value: update.changes.difficulty }
-                    : undefined,
-                }
-              }
-              return card
-            }),
-          }),
-        ),
-      }))
+  applyUpdatesToLocalStorage(updates: GridAiResponse['updates']): void {
+    if (!updates || updates.length === 0) return
+
+    const updatedSetIds = new Set<string>()
+
+    this.localStorageService.updateState((current) => ({
+      ...current,
+      flashcardSets: current.flashcardSets.map((set: FlashcardSetWithCards) => {
+        let setWasUpdated = false
+        const updatedFlashcards = set.flashcards.map((card: Flashcard) => {
+          const update = updates.find((u) => u.flashcardId === card.id)
+          if (update) {
+            setWasUpdated = true
+            return {
+              ...card,
+              ...update.changes,
+              difficulty: update.changes.difficulty
+                ? { value: update.changes.difficulty }
+                : undefined,
+            }
+          }
+          return card
+        })
+
+        if (setWasUpdated) {
+          updatedSetIds.add(set.id)
+        }
+
+        return {
+          ...set,
+          flashcards: updatedFlashcards,
+        }
+      }),
+    }))
+
+    // Mark the individual cards as dirty for efficient syncing
+    updates.forEach((update) => {
+      const setId = this.findSetIdForCard(update.flashcardId)
+      if (setId) {
+        this.localStorageService.markCardDirty(setId, update.flashcardId)
+      }
+    })
+  }
+
+  private findSetIdForCard(cardId: string): string | null {
+    const state = this.localStorageService.getState()
+    for (const set of state.flashcardSets) {
+      if (set.flashcards.some((card) => card.id === cardId)) {
+        return set.id
+      }
     }
+    return null
   }
 }

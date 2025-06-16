@@ -323,7 +323,7 @@ export class UpdateFlashcardsComponent implements OnInit, OnDestroy {
   /**
    * Handles cell value changes with strict type checking
    */
-  async onCellValueChanged(event: CellValueChangedEvent<GridRow>) {
+  onCellValueChanged(event: CellValueChangedEvent<GridRow>) {
     if (!event.data) return
 
     const field = event.colDef.field as keyof GridRow
@@ -375,13 +375,6 @@ export class UpdateFlashcardsComponent implements OnInit, OnDestroy {
 
       // Mark the flashcard set as dirty
       this.localStorageService.markDirty(event.data.setId)
-
-      // Try to sync to backend
-      try {
-        await this.flashcardService.syncToBackend()
-      } catch (error) {
-        console.warn('Failed to sync card changes to backend:', error)
-      }
     } catch (error) {
       console.error('Update failed:', error)
       this.errorMessage = 'Failed to save changes.'

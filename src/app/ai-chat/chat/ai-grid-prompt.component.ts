@@ -10,6 +10,7 @@ import { FormsModule } from '@angular/forms'
 import { CommonModule } from '@angular/common'
 import { catchError, EMPTY, finalize, Subject, switchMap } from 'rxjs'
 import { AiGridService } from '../../services/ai-llms/ai-grid.service'
+import { AiService } from '../../services/ai-llms/ai.service'
 import { SetSelectionService } from '../../services/set-selection.service'
 import { LocalStorageService } from '../../services/state/local-storage.service'
 import { GridApi, GridReadyEvent } from 'ag-grid-community'
@@ -18,6 +19,7 @@ import { ModelId } from '../../models/ai-http-service/ai-models.model'
 import { SelectionService } from '../../services/selection.service'
 import { TuiButton } from '@taiga-ui/core'
 import { TuiTextareaModule } from '@taiga-ui/legacy'
+
 interface ChatMessage {
   text: string
   isUser: boolean
@@ -53,6 +55,10 @@ interface GridPromptContext {
           Selected cards: {{ selectedRows().length }}
         </div>
         }
+        <!-- Model indicator -->
+        <div class="mt-2 text-xs text-green-600 dark:text-green-400">
+          Using: {{ aiService.selectedModel().name }}
+        </div>
       </div>
 
       <!-- Chat Messages Area -->
@@ -130,6 +136,7 @@ interface GridPromptContext {
 })
 export class AiGridPromptComponent implements OnDestroy {
   private readonly aiGridService = inject(AiGridService)
+  readonly aiService = inject(AiService)
   private readonly setSelectionService = inject(SetSelectionService)
   private readonly localStorageService = inject(LocalStorageService)
   private readonly promptSubject = new Subject<string>()
@@ -141,7 +148,6 @@ export class AiGridPromptComponent implements OnDestroy {
   prompt = signal('')
   isLoading = signal(false)
   selectedRows = this.selectionService.getSelectedRows()
-  currentModel = signal<ModelId>('meta-llama/llama-4-scout')
 
   contextMessage = computed(() => {
     const selectedSet = this.setSelectionService.getSelectedSet()
@@ -150,9 +156,7 @@ export class AiGridPromptComponent implements OnDestroy {
     if (!selectedSet) return 'Please select a flashcard set to begin.'
 
     let message = `Working with: ${selectedSet.title} (${selectedSet.flashcards.length} total cards)`
-    if (selectedCount > 0) {
-      message += `\nSelected: ${selectedCount} cards`
-    }
+
     return message
   })
 
@@ -216,7 +220,7 @@ export class AiGridPromptComponent implements OnDestroy {
             .generateGridUpdates(
               prompt,
               this.getPromptContext()!,
-              this.currentModel(),
+              this.aiService.selectedModel().id,
             )
             .pipe(
               catchError((error) => {
@@ -269,14 +273,16 @@ export class AiGridPromptComponent implements OnDestroy {
     })
 
     // Update local storage using existing updateState method
+    const updatedSetIds = new Set<string>()
+
     this.localStorageService.updateState((current) => ({
       ...current,
-      flashcardSets: current.flashcardSets.map((set) => ({
-        ...set,
-        flashcards: set.flashcards.map((card) => {
+      flashcardSets: current.flashcardSets.map((set) => {
+        let setWasUpdated = false
+        const updatedFlashcards = set.flashcards.map((card) => {
           const update = updates.find((u) => u.flashcardId === card.id)
           if (update) {
-            this.localStorageService.markDirty(card.id)
+            setWasUpdated = true
             return {
               ...card,
               ...update.changes,
@@ -286,9 +292,23 @@ export class AiGridPromptComponent implements OnDestroy {
             }
           }
           return card
-        }),
-      })),
+        })
+
+        if (setWasUpdated) {
+          updatedSetIds.add(set.id)
+        }
+
+        return {
+          ...set,
+          flashcards: updatedFlashcards,
+        }
+      }),
     }))
+
+    // Mark the sets as dirty, not the individual cards
+    updatedSetIds.forEach((setId) => {
+      this.localStorageService.markDirty(setId)
+    })
   }
 
   ngOnDestroy(): void {

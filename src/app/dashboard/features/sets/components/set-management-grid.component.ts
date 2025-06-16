@@ -234,12 +234,7 @@ export class SetManagementGridComponent implements OnInit {
       this.localStorageService.markDirty(newSetId)
       this.refreshGridData()
 
-      // Try to sync to backend if applicable
-      try {
-        await this.flashcardService.syncToBackend()
-      } catch (error) {
-        console.warn('Failed to sync new set to backend:', error)
-      }
+      // Set is marked as dirty and will sync when user clicks save button
 
       console.log(`New set created with ID: ${newSetId}`)
     } catch (error) {
@@ -268,10 +263,7 @@ export class SetManagementGridComponent implements OnInit {
       // Mark the set as dirty for syncing
       this.localStorageService.markDirty(event.data.id)
 
-      // Try to sync changes to backend
-      this.flashcardService.syncToBackend().catch((error) => {
-        console.warn('Failed to sync set changes to backend:', error)
-      })
+      // Changes are marked as dirty and will sync when user clicks save button
     } catch (error) {
       console.error('Failed to update set:', error)
       this.errorMessage.set('Failed to update set')

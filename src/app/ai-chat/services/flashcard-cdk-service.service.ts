@@ -131,42 +131,28 @@ export class FlashcardCDKService {
     )
   }
 
-  saveSelectedSet(): void {
+  async saveSelectedSet(): Promise<void> {
     const currentSetId = this.selectedSetId()
-    if (!currentSetId) return
+    if (!currentSetId) {
+      console.warn('No set selected, cannot save')
+      return
+    }
 
-    const currentSet = this.flashcardSets().find(
-      (set) => set.id === currentSetId,
-    )
-    if (!currentSet) return
+    // Check if this set is dirty (needs saving)
+    const dirtyItems = this.localStorageService.getDirtyItems()
+    if (!dirtyItems.includes(currentSetId)) {
+      console.log('Set is not dirty, no save needed')
+      return
+    }
 
-    const updatedCards = this.selectedSetCards().map((card, index) => ({
-      ...card,
-      position: index,
-    }))
-
-    // Update each card in the set
-    updatedCards.forEach((card) => {
-      const updateDto: UpdateFlashcardDto = {
-        position: card.position,
-        front: card.front,
-        back: card.back,
-        difficulty: card.difficulty,
-        tags: card.tags,
-      }
-      this.flashcardService
-        .updateCard(card.id, updateDto, currentSetId)
-        .pipe(
-          tap((updatedSet: FlashcardSetWithCards) => {
-            if (updatedSet) {
-              this.flashcardSets.update((sets) =>
-                sets.map((s) => (s.id === currentSetId ? updatedSet : s)),
-              )
-            }
-          }),
-        )
-        .subscribe()
-    })
+    try {
+      console.log(`Saving set ${currentSetId} to backend...`)
+      await this.flashcardService.syncToBackend()
+      console.log(`Successfully saved set ${currentSetId}`)
+    } catch (error) {
+      console.error(`Failed to save set ${currentSetId}:`, error)
+      throw error
+    }
   }
 
   updateCardPositions(cards: Flashcard[], type: 'new' | 'selected'): void {
@@ -181,27 +167,25 @@ export class FlashcardCDKService {
       const currentSetId = this.selectedSetId()
       if (!currentSetId) return
 
-      updatedCards.forEach((card) => {
-        const updateDto: UpdateFlashcardDto = {
-          position: card.position,
-          front: card.front,
-          back: card.back,
-          difficulty: card.difficulty,
-          tags: card.tags,
-        }
-        this.flashcardService
-          .updateCard(card.id, updateDto, currentSetId)
-          .pipe(
-            tap((updatedSet: FlashcardSetWithCards) => {
-              if (updatedSet) {
-                this.flashcardSets.update((sets) =>
-                  sets.map((s) => (s.id === currentSetId ? updatedSet : s)),
-                )
+      // Update positions in local storage and mark as dirty
+      this.localStorageService.updateState((state) => ({
+        ...state,
+        flashcardSets: state.flashcardSets.map((set) =>
+          set.id === currentSetId
+            ? {
+                ...set,
+                flashcards: updatedCards,
+                updated_at: new Date().toISOString(),
               }
-            }),
-          )
-          .subscribe()
-      })
+            : set,
+        ),
+      }))
+
+      // Mark the set as dirty for later syncing
+      this.localStorageService.markDirty(currentSetId)
+
+      // Update the CDK service state to reflect changes
+      this.forceUpdateSelectedSetCards(updatedCards)
     }
   }
 
