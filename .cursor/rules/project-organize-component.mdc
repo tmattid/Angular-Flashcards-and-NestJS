@@ -3,52 +3,224 @@ description:
 globs:
 alwaysApply: false
 ---
-export class <Feature>ViewComponent {
-  /* ───────────────────── 1. Injected dependencies ─────────────────────── */
-  private readonly http       = inject(HttpClient);
+import { Component, DestroyRef, inject, signal, computed, effect } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+
+/**
+ * Angular Component Organization with Signals Best Practices
+ * Each section explains WHAT pattern to use and WHY it matters
+ */
+export class ComponentName {
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  /* 1. Dependencies - Inject at the top                                      */
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  /* WHY: Declaring dependencies first makes them immediately visible and     */
+  /* shows what external services this component depends on. Using inject()   */
+  /* instead of constructor injection reduces boilerplate.                    */
+  private readonly http = inject(HttpClient);
   private readonly destroyRef = inject(DestroyRef);
 
-  /* ────────────────────── 2. Constants & configuration ────────────────── */
-  private static readonly API_URL = '/api/<feature>';
-  /* ─────────────────────── 3. Mutable signals (state) ─────────────────── */
-  private readonly _items    = signal<MyEntity[]>([]);
-  private readonly _selected = signal<MyEntity | null>(null);
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  /* 2. Configuration - Static values and constants                           */
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  /* WHY: Separating configuration from logic makes it easy to modify        */
+  /* endpoints, limits, or feature flags without touching business logic.     */
+  /* Group all magic numbers and strings here for maintainability.           */
+  private readonly config = {
+    apiUrl: '/api/resource',
+    pageSize: 20,
+    debounceMs: 300,
+  };
 
-  /* ───────────────────── 4. Computed signals (preferred) ──────────────── */
-  readonly itemCount = computed(() => this._items().length);
-  readonly hasItems  = computed(() => this.itemCount() > 0);
-  readonly vm        = computed(() => ({
-    items   : this._items(),
-    selected: this._selected(),
-    count   : this.itemCount(),
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  /* 3. State Management - Private writable, public readonly                  */
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  /* WHY: This pattern prevents external components from directly mutating    */
+  /* our state while still allowing them to react to changes. It's like      */
+  /* having private setters with public getters, ensuring state changes      */
+  /* only happen through our controlled methods.                             */
+
+  // Private writable signals - only this component can modify
+  private readonly _items = signal<Item[]>([]);
+  private readonly _selectedId = signal<number | null>(null);
+  private readonly _loading = signal(false);
+  private readonly _error = signal<string | null>(null);
+
+  // Public readonly signals - other components can read but not write
+  readonly items = this._items.asReadonly();
+  readonly loading = this._loading.asReadonly();
+  readonly error = this._error.asReadonly();
+
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  /* 4. Computed State - Derive, don't duplicate                              */
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  /* WHY: Computed signals automatically update when dependencies change,     */
+  /* eliminating manual synchronization bugs. They're also cached - only     */
+  /* recalculating when inputs change. This is more efficient than storing   */
+  /* derived values separately and updating them manually.                    */
+
+  // Derives selected item from items and selectedId
+  readonly selectedItem = computed(() =>
+    this._items().find(item => item.id === this._selectedId())
+  );
+
+  // Simple boolean checks as computed for reactive templates
+  readonly hasItems = computed(() => this._items().length > 0);
+  readonly hasError = computed(() => this._error() !== null);
+  readonly isReady = computed(() => !this._loading() && !this._error());
+
+  // Single view model for template (*ngIf="vm.isReady")
+  readonly vm = computed(() => ({
+    items: this._items(),
+    selectedItem: this.selectedItem(),
+    loading: this._loading(),
+    error: this._error(),
+    hasItems: this.hasItems(),
+    isReady: this.isReady(),
   }));
 
-  /* ─────── 5. Lifecycle & LIMITED imperative effects (if needed) ──────── */
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  /* 5. Effects & Initialization - Use sparingly                              */
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  /* WHY: Effects are for side effects that can't be expressed as computed   */
+  /* signals. Overusing effects leads to hard-to-track cascading updates.    */
+  /* Most reactive logic should use computed signals instead.                 */
   constructor() {
-    this.loadItems();                              // initial fetch
+    // Initialize data on component creation
+    this.loadItems();
 
-    effect(() => {                                 // side-effect example
-      const chosen = this._selected();
-      if (chosen) console.debug('[<feature>] selected', chosen.id);
-    }).takeUntilDestroyed(this.destroyRef);
+    // Effect example: Log selection changes (side effect)
+    // WHY: Logging is a side effect that doesn't produce a new value
+    effect(() => {
+      const selected = this.selectedItem();
+      if (selected) {
+        console.log('[Analytics] User selected item:', selected.id);
+        // Could also call analytics service here
+      }
+    });
+
+    // Effect example: Auto-save draft when data changes
+    // WHY: Saving to localStorage is a side effect outside Angular's control
+    effect(() => {
+      const items = this._items();
+      if (items.length > 0) {
+        localStorage.setItem('draft_items', JSON.stringify(items));
+      }
+    });
   }
 
-  /* ─────────────────────── 6. Public API (template) ───────────────────── */
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  /* 6. Public API - Methods that external components/templates can call      */
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  /* WHY: These methods encapsulate state changes, ensuring they happen in   */
+  /* a controlled way. This is the ONLY way external code can modify state.  */
+
   select(id: number): void {
-    this._selected.set(this._items().find(x => x.id === id) ?? null);
+    // Direct assignment when replacing entire value
+    this._selectedId.set(id);
+  }
+
+  clearSelection(): void {
+    this._selectedId.set(null);
+  }
+
+  addItem(item: Item): void {
+    // Use update() when deriving new state from current state
+    // WHY: update() ensures we're always working with the latest value
+    this._items.update(items => [...items, item]);
+  }
+
+  removeItem(id: number): void {
+    // Immutable update pattern for arrays
+    this._items.update(items => items.filter(item => item.id !== id));
+
+    // Clear selection if we removed the selected item
+    if (this._selectedId() === id) {
+      this._selectedId.set(null);
+    }
   }
 
   refresh(): void {
+    // Clear error state when user manually refreshes
+    this._error.set(null);
     this.loadItems();
   }
 
-  /* ────────────────────── 7. Private helper functions ─────────────────── */
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  /* 7. Private Methods - Internal logic and HTTP calls                       */
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  /* WHY: Separating private methods keeps the public API clean and makes    */
+  /* it clear what's internal implementation vs public contract.             */
+
   private loadItems(): void {
-    this.http.get<MyEntity[]>(<Feature>ViewComponent.API_URL)
-      .pipe(takeUntilDestroyed(this.destroyRef))
+    // Set loading state for UI feedback
+    this._loading.set(true);
+    this._error.set(null);
+
+    this.http.get<Item[]>(this.config.apiUrl)
+      .pipe(
+        // WHY: Cleanup subscription when component destroys to prevent memory leaks
+        takeUntilDestroyed(this.destroyRef)
+      )
       .subscribe({
-        next : list => this._items.set(list),
-        error: err  => console.error('[<feature>] load failed', err),
+        next: items => {
+          this._items.set(items);
+          this._loading.set(false);
+          // Validate selection still exists after refresh
+          this.validateSelection();
+        },
+        error: error => {
+          // User-friendly error messages
+          const message = error.status === 404
+            ? 'Items not found'
+            : 'Failed to load items. Please try again.';
+          this._error.set(message);
+          this._loading.set(false);
+          // Clear items on error to show empty state
+          this._items.set([]);
+        },
       });
   }
+
+  private validateSelection(): void {
+    // WHY: After reloading items, the selected item might no longer exist
+    // This ensures UI consistency by clearing invalid selections
+    if (this._selectedId() !== null && !this.selectedItem()) {
+      this._selectedId.set(null);
+    }
+  }
+}
+/* ═══════════════════════════════════════════════════════════════════════ */
+/*                        SIGNALS BEST PRACTICES SUMMARY                     */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
+/**
+ * 1. ENCAPSULATION PATTERN: Private writable + Public readonly
+ *    WHY: Prevents external mutations while keeping reactivity
+ *
+ * 2. COMPUTED OVER EFFECTS: Prefer computed() for derived state
+ *    WHY: Computed signals are cached, pure, and easier to test
+ *
+ * 3. UPDATE VS SET: Use update() for transformations, set() for replacements
+ *    WHY: update() guarantees you're working with current state
+ *
+ * 4. SINGLE VM COMPUTED: One computed signal for all template needs
+ *    WHY: Reduces template subscriptions and improves performance
+ *
+ * 5. EFFECTS SPARINGLY: Only for true side effects (logging, localStorage)
+ *    WHY: Effects can cause cascading updates and are harder to debug
+ *
+ * 6. IMMUTABLE UPDATES: Always create new objects/arrays
+ *    WHY: Ensures change detection works and prevents subtle bugs
+ *
+ * 7. ERROR HANDLING: Store error state as signals
+ *    WHY: Makes error UI reactive and consistent with loading states
+ */
+
+// TYPE DEFINITIONS (for reference)
+interface Item {
+  id: number;
+  name: string;
+  // other properties...
 }

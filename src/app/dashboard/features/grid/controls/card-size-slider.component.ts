@@ -48,8 +48,8 @@ import { FormsModule } from '@angular/forms'
           />
         </svg>
       </div>
-      <span class="text-xs text-gray-500 dark:text-gray-400 min-w-[3rem]">
-        {{ size() }}px
+      <span class="text-xs text-gray-500 dark:text-gray-400 min-w-[4rem]">
+        {{ size() === minSize() ? 'Table' : size() + 'px' }}
       </span>
     </div>
   `,
@@ -75,7 +75,7 @@ import { FormsModule } from '@angular/forms'
 })
 export class CardSizeSliderComponent {
   // Input signals for configuration
-  readonly minSize = input<number>(80)
+  readonly minSize = input<number>(40) // 40px = table mode
   readonly maxSize = input<number>(300)
   readonly step = input<number>(20)
 

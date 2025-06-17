@@ -1,7 +1,7 @@
 import { Component } from '@angular/core'
 import { ICellRendererAngularComp } from 'ag-grid-angular'
 import { ICellRendererParams } from 'ag-grid-community'
-import { GridRow } from '../update-flashcards.component'
+import { GridRow } from '../core/grid.types'
 
 @Component({
   standalone: true,
@@ -23,18 +23,19 @@ import { GridRow } from '../update-flashcards.component'
       :host {
         display: block;
         width: 100%;
-        height: var(--card-height, 120px);
-      }
-
-      .card-container {
-        height: 100%;
-        width: 100%;
-        padding: 8px;
+        min-height: 60px;
         box-sizing: border-box;
       }
 
+      .card-container {
+        width: 100%;
+        padding: 8px;
+        box-sizing: border-box;
+        display: flex;
+        align-items: stretch;
+      }
+
       .card-content {
-        height: 100%;
         width: 100%;
         display: flex;
         flex-direction: column;
@@ -47,6 +48,7 @@ import { GridRow } from '../update-flashcards.component'
         transition: all 0.3s ease;
         overflow: hidden;
         position: relative;
+        box-sizing: border-box;
       }
 
       :host-context(.dark) .card-content {
@@ -55,23 +57,25 @@ import { GridRow } from '../update-flashcards.component'
       }
 
       .card-text {
-        display: flex;
-        align-items: center;
-        padding: 16px;
+        padding: 12px;
         width: 100%;
-        max-height: 100%;
+        height: 100%;
         overflow-y: auto;
         overflow-x: hidden;
         word-wrap: break-word;
         word-break: break-word;
         hyphens: auto;
         line-height: 1.4;
+        white-space: normal;
+        display: flex;
+        align-items: center;
+        box-sizing: border-box;
 
         /* Responsive font sizing based on card height */
         font-size: clamp(
           0.75rem,
           calc(var(--card-height, 120px) * 0.08),
-          1.125rem
+          1.5rem
         );
 
         /* Custom scrollbar */
@@ -80,13 +84,13 @@ import { GridRow } from '../update-flashcards.component'
       }
 
       .card-text.text-center {
-        justify-content: center;
         text-align: center;
+        justify-content: center;
       }
 
       .card-text.text-left {
-        justify-content: flex-start;
         text-align: left;
+        justify-content: flex-start;
       }
 
       .card-text::-webkit-scrollbar {
@@ -119,39 +123,11 @@ import { GridRow } from '../update-flashcards.component'
         background: rgb(107 114 128);
       }
 
-      /* Fade effect when content overflows */
-      .card-text::after {
-        content: '';
-        position: absolute;
-        bottom: 16px;
-        left: 16px;
-        right: 16px;
-        height: 20px;
-        background: linear-gradient(transparent, white);
-        pointer-events: none;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-      }
-
-      :host-context(.dark) .card-text::after {
-        background: linear-gradient(transparent, rgb(17 24 39));
-      }
-
-      /* Show fade effect only when scrollable */
-      .card-text:not(.fully-visible)::after {
-        opacity: 1;
-      }
-
       /* Hover effects */
       .card-content:hover {
         box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1),
           0 2px 4px -2px rgb(0 0 0 / 0.1);
         transform: translateY(-1px);
-      }
-
-      :host ::ng-deep .ag-cell-wrapper {
-        height: 100%;
-        width: 100%;
       }
     `,
   ],
@@ -165,6 +141,7 @@ export class CardCellRendererComponent implements ICellRendererAngularComp {
     this.params = params
     this.value = params.value
     this.isFrontColumn = params.column?.getColId() === 'front'
+    
   }
 
   refresh(params: ICellRendererParams<GridRow>): boolean {

@@ -1,6 +1,6 @@
 import { Component, signal, input, output } from '@angular/core'
 import { CommonModule } from '@angular/common'
-import { SetManagementSidebarComponent } from './set-management-sidebar/set-management-sidebar.component'
+import { SetManagementSidebarComponent } from './set-management/set-management-sidebar.component'
 
 @Component({
   selector: 'app-sidebar-container',

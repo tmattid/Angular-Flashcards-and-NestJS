@@ -9,10 +9,7 @@ import { FlashcardCDKService } from '../ai-chat/services/flashcard-cdk-service.s
 import { SetSelectionService } from '../services/set-selection.service'
 import { FlashcardListComponent } from './features/flashcards/components/flashcard-list.component'
 import { SetManagementGridComponent } from './features/sets/components/set-management-grid.component'
-import {
-  UpdateFlashcardsComponent,
-  GridRow,
-} from './features/grid/update-flashcards/update-flashcards.component'
+import { FlashcardGridComponent, GridRow } from './features/grid'
 
 type Tab = 'grid' | 'flashcard-list' | 'sets' | 'profile'
 
@@ -24,7 +21,7 @@ type Tab = 'grid' | 'flashcard-list' | 'sets' | 'profile'
     DashboardNavComponent,
     ProfileInfoComponent,
     ProfileAvatarComponent,
-    UpdateFlashcardsComponent,
+    FlashcardGridComponent,
     FlashcardListComponent,
     SetManagementGridComponent,
   ],
@@ -40,7 +37,7 @@ type Tab = 'grid' | 'flashcard-list' | 'sets' | 'profile'
         <div class="content-panel w-full">
           <!-- Grid Tab -->
           <div [hidden]="activeTab() !== 0" class="panel-content">
-            <app-update-flashcards (rowsSelected)="onRowsSelected($event)"></app-update-flashcards>
+            <app-flashcard-grid (rowsSelected)="onRowsSelected($event)"></app-flashcard-grid>
           </div>
 
           <!-- Flashcard List Tab -->

@@ -11,12 +11,12 @@ import { Subject, takeUntil } from 'rxjs'
 
 import { AiChatComponent } from '../../../../ai-chat/ai-chat.component'
 import { AiModelSelectorComponent } from '../../../../ai-chat/chat/ai-model-selector.component'
-import { SetManagementSidebarComponent } from '../update-flashcards/set-sidebar/set-management-sidebar/set-management-sidebar.component'
+import { SetManagementSidebarComponent } from '../sidebar/set-management/set-management-sidebar.component'
 import { SetSelectionService } from '../../../../services/set-selection.service'
 import { AiService } from '../../../../services/ai-llms/ai.service'
 
 @Component({
-  selector: 'app-grid-chat-box',
+  selector: 'app-grid-workspace',
   standalone: true,
   imports: [
     CommonModule,
@@ -393,7 +393,7 @@ import { AiService } from '../../../../services/ai-llms/ai.service'
     `,
   ],
 })
-export class GridChatBoxComponent implements OnInit, OnDestroy {
+export class GridWorkspaceComponent implements OnInit, OnDestroy {
   private readonly setSelectionService = inject(SetSelectionService)
   readonly aiService = inject(AiService)
   private readonly destroy$ = new Subject<void>()

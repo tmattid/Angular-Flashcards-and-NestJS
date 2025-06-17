@@ -12,12 +12,12 @@ import { Subject, takeUntil } from 'rxjs'
 import {
   FlashcardSetWithCards,
   CreateFlashcardSetDto,
-} from '../../../../../../api'
-import { LocalStorageService } from '../../../../../../services/state/local-storage.service'
-import { SetSelectionService } from '../../../../../../services/set-selection.service'
-import { ThemeService } from '../../../../../../services/theme.service'
-import { FlashcardService } from '../../../../../../services/flashcard-http.service'
-import { AuthService } from '../../../../../../services/auth.service'
+} from '../../../../../api'
+import { LocalStorageService } from '../../../../../services/state/local-storage.service'
+import { SetSelectionService } from '../../../../../services/set-selection.service'
+import { ThemeService } from '../../../../../services/theme.service'
+import { FlashcardService } from '../../../../../services/flashcard-http.service'
+import { AuthService } from '../../../../../services/auth.service'
 
 @Component({
   selector: 'app-set-management-sidebar',
@@ -683,9 +683,9 @@ export class SetManagementSidebarComponent implements OnInit, OnDestroy {
       const setId = this.setToDelete.id
 
       // Update local storage
-      this.localStorageService.updateState((state) => ({
+      this.localStorageService.updateState((state: any) => ({
         ...state,
-        flashcardSets: state.flashcardSets.filter((s) => s.id !== setId),
+        flashcardSets: state.flashcardSets.filter((s: any) => s.id !== setId),
       }))
 
       // If this was the selected set, clear selection or select another

@@ -9,8 +9,8 @@ import {
   ValueGetterParams,
 } from 'ag-grid-community'
 import { themeQuartz } from 'ag-grid-enterprise'
-import { IconCellRendererComponent } from '../../grid/update-flashcards/cell-renderer/icon-cell-renderer.component'
-import { IconCellEditorComponent } from '../../grid/update-flashcards/cell-editor/icon-cell-editor.component'
+import { IconCellRendererComponent } from '../../grid/cells/icon-cell-renderer.component'
+import { IconCellEditorComponent } from '../../grid/cells/icon-cell-editor.component'
 import { FlashcardSetWithCards } from '../../../../api'
 
 @Injectable({ providedIn: 'root' })
