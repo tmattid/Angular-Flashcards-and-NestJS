@@ -1,6 +1,5 @@
 import { Injectable } from '@angular/core'
 import { OpenAPI } from './core/OpenAPI'
-import { environment } from '../../environments/environment'
 
 @Injectable({
   providedIn: 'root',
@@ -12,7 +11,7 @@ export class ApiConfigService {
 
   private initialize(): void {
     // Override the base URL to always use port 3000
-    OpenAPI.BASE = 'http://localhost:3000/api'
+    OpenAPI.BASE = 'http://localhost:3000'
 
     // Enable credentials for all requests
     OpenAPI.WITH_CREDENTIALS = true

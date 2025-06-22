@@ -1,31 +1,30 @@
 import { Injectable, inject } from '@angular/core'
-import { Observable, catchError, map, of, tap } from 'rxjs'
+import { Observable, catchError, of, tap } from 'rxjs'
 import { environment } from '../../../environments/environment'
 import { ModelId } from '../../models/ai-http-service/ai-models.model'
-import { GridRow } from '../../dashboard/features/grid'
+import { GridRow } from '../../dashboard/grid/grid.types'
 import { LocalStorageService } from '../state/local-storage.service'
 import { HttpClient } from '@angular/common/http'
-import { FlashcardService } from '../flashcard-http.service'
 import { Flashcard, FlashcardSetWithCards } from '../../api'
 
 interface GridAiResponse {
   message: string
-  updates?: Array<{
+  updates?: {
     flashcardId: string
     changes: Partial<Pick<GridRow, 'front' | 'back' | 'difficulty'>>
-  }>
+  }[]
 }
 
 interface GridPromptContext {
   setId: string
   setTitle: string
-  selectedCards: Array<{
+  selectedCards: {
     flashcardId: string
     front: string
     back: string
     position: number
     difficulty: Record<string, any> | undefined
-  }>
+  }[]
   totalCards: number
   scope: 'selected' | 'fullset'
 }
@@ -37,7 +36,6 @@ export class AiGridService {
   private readonly apiUrl = `${environment.apiUrl}/ai`
   private readonly localStorageService = inject(LocalStorageService)
   private readonly http = inject(HttpClient)
-  private readonly flashcardService = inject(FlashcardService)
 
   generateGridUpdates(
     prompt: string,
@@ -84,13 +82,18 @@ export class AiGridService {
           const update = updates.find((u) => u.flashcardId === card.id)
           if (update) {
             setWasUpdated = true
-            return {
+            const updatedCard: Flashcard = {
               ...card,
-              ...update.changes,
-              difficulty: update.changes.difficulty
-                ? { value: update.changes.difficulty }
-                : undefined,
+              front: update.changes.front ?? card.front,
+              back: update.changes.back ?? card.back,
             }
+
+            // Handle difficulty separately to ensure proper typing
+            if (update.changes.difficulty !== undefined) {
+              updatedCard.difficulty = { value: update.changes.difficulty }
+            }
+
+            return updatedCard
           }
           return card
         })

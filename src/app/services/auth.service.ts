@@ -15,8 +15,6 @@ import { environment } from '../../environments/environment'
 
 // Backend API URL - we need to handle different possible configurations
 const API_URL = environment.apiUrl
-// Get the base URL (without /api) in case the auth routes are not prefixed
-const BASE_URL = API_URL.replace(/\/api$/, '')
 
 export interface UserProfile {
   id: string
@@ -118,7 +116,7 @@ export class AuthService {
     )
   }
 
-  signInWithGoogle(callbackParams: string = ''): Observable<void> {
+  signInWithGoogle(callbackParams = ''): Observable<void> {
     // Use the API URL with the global prefix
     let googleAuthUrl = `${API_URL}/auth/google`
 

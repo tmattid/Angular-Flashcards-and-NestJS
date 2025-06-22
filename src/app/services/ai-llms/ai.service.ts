@@ -1,5 +1,5 @@
-import { Injectable, computed, inject, signal } from '@angular/core'
-import { Observable, catchError, from, of, tap } from 'rxjs'
+import { Injectable,  inject, signal } from '@angular/core'
+import { Observable, catchError,  of, tap } from 'rxjs'
 import { environment } from '../../../environments/environment'
 import { HttpClient } from '@angular/common/http'
 import {
@@ -8,24 +8,19 @@ import {
   ModelType,
 } from '../../models/ai-http-service/ai-models.model'
 import {
-  ChatRequest,
+
   EdgeFunctionResponse,
 } from '../../models/ai-http-service/ai.types'
 import { Flashcard } from '../../api'
-import { FlashcardCDKService } from '../../ai-chat/services/flashcard-cdk-service.service'
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
   content: string
 }
 
-interface GeneratedFlashcard {
-  front: string
-  back: string
-}
 
 interface ExtendedEdgeFunctionResponse extends EdgeFunctionResponse {
-  flashcards?: GeneratedFlashcard[]
+  cards?: Flashcard[]
 }
 
 @Injectable({
@@ -33,7 +28,6 @@ interface ExtendedEdgeFunctionResponse extends EdgeFunctionResponse {
 })
 export class AiService {
   private readonly http = inject(HttpClient)
-  private readonly flashcardCDKService = inject(FlashcardCDKService)
   private readonly apiUrl = `${environment.apiUrl}/ai`
 
   private readonly availableModels = signal<Model[]>(MODEL_DETAILS)
@@ -51,32 +45,6 @@ export class AiService {
     }
   }
 
-  private async processStreamResponse(
-    response: Response,
-  ): Promise<ExtendedEdgeFunctionResponse> {
-    const reader = response.body?.getReader()
-    if (!reader) throw new Error('Response body is null')
-
-    const decoder = new TextDecoder()
-    let buffer = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      buffer += decoder.decode(value, { stream: true })
-    }
-
-    // Process final buffer
-    const finalBuffer = decoder.decode()
-    buffer += finalBuffer
-
-    try {
-      return JSON.parse(buffer) as ExtendedEdgeFunctionResponse
-    } catch (error) {
-      throw new Error(`Failed to parse response: ${error}`)
-    }
-  }
 
   generateResponse(prompt: string): Observable<ExtendedEdgeFunctionResponse> {
     const requestBody = {
@@ -113,29 +81,10 @@ export class AiService {
             ])
           }
 
-          // Process flashcards if they exist in the response
-          if (response.flashcards && response.flashcards.length > 0) {
-            // Get current new flashcards
-            const currentNewCards = this.flashcardCDKService.newFlashcards()
-
-            // Create new flashcards with proper structure
-            const newFlashcards: Flashcard[] = response.flashcards.map(
-              (card: GeneratedFlashcard, index: number) => ({
-                id: `temp-${Date.now()}-${index}`, // Temporary ID for new cards
-                front: card.front,
-                back: card.back,
-                position: currentNewCards.length + index,
-                setId: '', // Empty string for new cards
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              }),
-            )
-
-            // Update the new flashcards in the CDK service
-            this.flashcardCDKService.newFlashcards.set([
-              ...currentNewCards,
-              ...newFlashcards,
-            ])
+          // Process cards if they exist in the response
+          if (response.cards && response.cards.length > 0) {
+            // TODO: Handle new flashcards with the simplified architecture
+            console.log('Generated cards:', response.cards)
           }
         }),
         catchError((error) => {

@@ -1,44 +1,15 @@
 export const AVAILABLE_MODELS = [
-  'mistralai/ministral-3b',
-  'google/gemini-2.5-flash-preview-05-20',
-  'openai/gpt-4.1-nano',
-  'meta-llama/llama-3.3-8b-instruct:free',
-  'deepseek/deepseek-chat-v3-0324',
+  'google/gemini-2.5-flash-lite-preview-06-17',
 ] as const
 
 export type ModelType = typeof AVAILABLE_MODELS[number]
 
 export const OPENROUTER_MODELS = {
-  'google/gemini-2.5-flash-preview-05-20': {
-    name: 'Gemini 2.5 Pro ',
-    description: "Google's latest model - Preview",
-    context_length: 200000,
-    tokens_per_second: 1000,
-  },
-  'mistralai/ministral-3b': {
-    name: 'Mistral 3b',
-    description: "Mistral's latest model",
-    context_length: 128000,
-    tokens_per_second: 1000,
-  },
-  'openai/gpt-4.1-nano': {
-    name: 'GPT 4.1 Nano',
-    description: "OpenAI's latest model",
-    context_length: 100000,
-    tokens_per_second: 1000,
-  },
-  'meta-llama/llama-3.3-8b-instruct:free': {
-    name: 'Llama 3.3 8b Instruct',
-    description: "Meta's latest model",
-    context_length: 100000,
-    tokens_per_second: 1000,
-  },
-
-  'deepseek/deepseek-chat-v3-0324': {
-    name: 'DeepSeek Chat V3 0324',
-    description: "DeepSeek's latest model",
-    context_length: 100000,
-    tokens_per_second: 1000,
+  'google/gemini-2.5-flash-lite-preview-06-17': {
+    name: 'Gemini 2.5 Flash Lite',
+    description: "Google's lightweight, fast model optimized for quick responses",
+    context_length: 1000000,
+    tokens_per_second: 2000,
   },
 } as const
 
@@ -108,10 +79,10 @@ export interface OpenRouterMessage {
 
 export interface OpenRouterResponse {
   id: string
-  choices: Array<{
+  choices: {
     message: OpenRouterMessage
     finish_reason: 'stop' | 'length' | 'content_filter'
-  }>
+  }[]
   model: ModelId
   usage: {
     prompt_tokens: number

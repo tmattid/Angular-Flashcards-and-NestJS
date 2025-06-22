@@ -1,6 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core'
 import { CommonModule } from '@angular/common'
-import { ActivatedRoute, Router } from '@angular/router'
+import { ActivatedRoute } from '@angular/router'
 import { AuthService } from '../../services/auth.service'
 
 @Component({
@@ -42,7 +42,6 @@ import { AuthService } from '../../services/auth.service'
 })
 export class AuthCallbackComponent implements OnInit {
   private route = inject(ActivatedRoute)
-  private router = inject(Router)
   private authService = inject(AuthService)
 
   loading = true

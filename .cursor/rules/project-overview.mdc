@@ -1,0 +1,106 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# 🎯 PROJECT GOAL
+AI-powered flashcard system where users create, edit, and manage flashcards through natural language chat using OpenRouter API.
+
+# 🏗️ ARCHITECTURE OVERVIEW
+
+## Backend (NestJS)
+**Location**: `/Backend/src/`
+**Purpose**: RESTful API + AI integration
+
+### Key Modules:
+- `/ai/` - OpenRouter integration for flashcard generation/editing
+- `/auth/` - Google OAuth + JWT security
+- `/flashcards/` - CRUD operations for flashcards and sets
+- `/users/` - User management
+
+### Pattern: Controller → Service → Repository → Database
+
+## Frontend (Angular 19)
+**Location**: `/Frontend/src/app/`
+**Purpose**: Reactive UI with offline-first approach
+
+### Core Services (ONLY 3):
+1. **LocalStorageService** - IndexedDB storage + sync management
+2. **GridService** - AG Grid operations + UI state
+3. **FlashcardsService** - Generated HTTP client (from OpenAPI)
+
+### Pattern: Component → Service → IndexedDB → Periodic Sync
+
+# 📁 WHERE TO FIND EVERYTHING
+
+## Types & Models
+**ALWAYS USE**: `/Frontend/src/app/api/models/` (generated from backend OpenAPI)
+- `Flashcard.ts` - Main flashcard type
+- `FlashcardSetWithCards.ts` - Set with cards
+- `CreateFlashcardDto.ts` - For creating cards
+- `UpdateFlashcardDto.ts` - For updating cards
+
+## Backend Logic
+- Controllers: `/Backend/src/*/` (handles HTTP requests)
+- Services: `/Backend/src/*/` (business logic)
+- Entities: `/Backend/src/*/entities/` (database models)
+
+## Frontend Logic
+- Components: `/Frontend/src/app/dashboard/grid/` (UI)
+- Services: `/Frontend/src/app/services/` (state management)
+- Generated API: `/Frontend/src/app/api/` (HTTP clients)
+
+# 🔄 DATA FLOW
+
+## Create/Edit Flow:
+1. User types in AI chat → Frontend sends to `/Backend/src/ai/`
+2. AI service calls OpenRouter → Returns structured JSON
+3. Backend saves to database → Frontend syncs to IndexedDB
+4. Grid updates reactively via signals
+
+## Offline-First Flow:
+1. User edits in grid → Immediate IndexedDB update
+2. Card marked as "dirty" → Background sync every 30s
+3. Only changed records sent to server
+
+# 🚨 KEY RULES
+
+## Type Safety
+- **NEVER** use `any` or `as` - always use generated types
+- **ALWAYS** import from `/Frontend/src/app/api/models/`
+
+## Service Architecture
+- **Backend**: Keep modules focused (AI, Auth, Flashcards, Users)
+- **Frontend**: Only 3 services (Local, Grid, API) - no more!
+
+## State Management
+- **Frontend**: Signals for state, computed for derived state
+- **Backend**: Stateless design with proper validation
+
+## File Organization
+- **Generated files**: Never edit `/Frontend/src/app/api/` (regenerated from backend)
+- **Custom logic**: Keep in appropriate service/component files
+- **Shared logic**: Use proper module exports
+
+# 🎨 WHY THIS ARCHITECTURE?
+
+## Backend Benefits
+- **Modular**: Each feature isolated in its own module
+- **Type-safe**: Full TypeScript with validation
+- **AI-Ready**: Structured OpenRouter integration
+- **Scalable**: Stateless, horizontally scalable design
+
+## Frontend Benefits
+- **Simple**: Only 3 services to understand
+- **Fast**: IndexedDB for instant updates
+- **Offline**: Works without internet connection
+- **Reactive**: Signals make UI updates automatic
+- **Type-safe**: Generated types prevent errors
+
+## Overall Benefits
+- **Consistent**: Generated types ensure frontend/backend sync
+- **Maintainable**: Clear separation of concerns
+- **Debuggable**: Easy to trace data flow
+- **Testable**: Services can be mocked independently
+
+

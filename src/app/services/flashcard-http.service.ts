@@ -9,7 +9,6 @@ import {
   UpdateFlashcardSetDto,
 } from '../api'
 import { LocalStorageService } from '../services/state/local-storage.service'
-import { HttpClient } from '@angular/common/http'
 
 /**
  * @FlashcardService
@@ -23,7 +22,6 @@ import { HttpClient } from '@angular/common/http'
 export class FlashcardService {
   private readonly localStorageService = inject(LocalStorageService)
   private readonly apiService = inject(FlashcardsService)
-  private readonly http = inject(HttpClient)
 
   getFlashcardSets(): Observable<FlashcardSetWithCards[]> {
     return this.apiService.getFlashcardSets()
@@ -66,12 +64,11 @@ export class FlashcardService {
   updateCard(
     id: string,
     dto: UpdateFlashcardDto,
-    setId: string,
   ): Observable<FlashcardSetWithCards> {
     return this.apiService.updateCard(id, dto)
   }
 
-  deleteCard(id: string, setId: string): Observable<void> {
+  deleteCard(id: string): Observable<void> {
     return this.apiService.deleteCard(id)
   }
 
@@ -177,7 +174,11 @@ export class FlashcardService {
             id: card.id.startsWith('temp_') ? crypto.randomUUID() : card.id,
             position: set.flashcards.findIndex((c) => c.id === card.id), // Keep original position
             difficulty:
-              (card.difficulty as any)?.value ?? card.difficulty ?? undefined,
+              typeof card.difficulty === 'object' &&
+              card.difficulty !== null &&
+              'value' in card.difficulty
+                ? (card.difficulty as { value: string }).value
+                : card.difficulty ?? undefined,
             tags: card.tags || undefined,
             // Ensure required properties exist
             front: card.front || '',
@@ -204,7 +205,7 @@ export class FlashcardService {
 
       console.log('Sending sync data for dirty sets:', flashcardSets)
       console.log('About to call backend sync API...')
-      console.log('API base URL:', (this.apiService as any).http)
+      console.log('API base URL:', (this.apiService as { http: unknown }).http)
       console.log('Auth token present:', !!localStorage.getItem('auth_token'))
 
       // Send only the dirty flashcard sets to the API

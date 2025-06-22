@@ -14,7 +14,7 @@ export interface BaseFlashcard {
 // Edge function response type - This is the parent type
 export interface EdgeFunctionResponse {
   message?: string
-  cards?: Array<{ front: string; back: string }>
+  cards?: { front: string; back: string }[]
   error?: string
 }
 

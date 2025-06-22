@@ -1,5 +1,8 @@
-import { NG_EVENT_PLUGINS } from '@taiga-ui/event-plugins'
-import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core'
+import {
+  ApplicationConfig,
+  provideZoneChangeDetection,
+  APP_INITIALIZER,
+} from '@angular/core'
 import {
   provideRouter,
   withViewTransitions,
@@ -10,77 +13,49 @@ import {
   withFetch,
   withInterceptors,
 } from '@angular/common/http'
-import { provideClientHydration } from '@angular/platform-browser'
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async'
 import { routes } from './app.routes'
 import { providePrimeNG } from 'primeng/config'
 import { definePreset } from '@primeng/themes'
-import Aura from '@primeng/themes/aura'
+import Lara from '@primeng/themes/lara'
 import { authInterceptor } from './auth/auth.interceptor'
 import { ApiConfigService } from './api/api-config.service'
 
-const Noir = definePreset(Aura, {
+/**
+ * Theme Configuration inspired by Sakai-ng patterns
+ *
+ * Features:
+ * - Multiple theme presets (Blue, Green)
+ * - Proper dark/light mode support
+ * - Consistent color schemes across components
+ * - Integration with Tailwind CSS
+ */
+
+// Primary blue theme (default)
+const FlashcardTheme = definePreset(Lara, {
+  root: {
+    background: 'black',
+  },
+  // Primary color blue
   semantic: {
     primary: {
-      50: '{zinc.50}',
-      100: '{zinc.100}',
-      200: '{zinc.200}',
-      300: '{zinc.300}',
-      400: '{zinc.400}',
-      500: '{zinc.500}',
-      600: '{zinc.600}',
-      700: '{zinc.700}',
-      800: '{zinc.800}',
-      900: '{zinc.900}',
-      950: '{zinc.950}',
-    },
-    colorScheme: {
-      light: {
-        primary: {
-          color: '{zinc.950}',
-          inverseColor: '#ffffff',
-          hoverColor: '{zinc.900}',
-          activeColor: '{zinc.800}',
-        },
-        highlight: {
-          background: '{zinc.950}',
-          focusBackground: '{zinc.700}',
-          color: '#ffffff',
-          focusColor: '#ffffff',
-        },
-      },
-      dark: {
-        surface: {
-          0: 'white',
-          1: 'white',
-          2: 'white',
-          3: 'white',
-          4: '{zinc.900}',
-          5: '{zinc.800}',
-          6: '{zinc.700}',
-          7: '{zinc.600}',
-          8: '{zinc.500}',
-          9: '{zinc.400}',
-          10: '{zinc.300}',
-        },
-
-        primary: {
-          color: '{zinc.50}',
-          inverseColor: '{zinc.950}',
-          hoverColor: '{zinc.100}',
-          activeColor: '{zinc.200}',
-          background: '{zinc.650}',
-        },
-        highlight: {
-          background: 'rgba(250, 250, 250, .16)',
-          focusBackground: 'rgba(250, 250, 250, .24)',
-          color: 'rgba(255,255,255,.87)',
-          focusColor: 'rgba(255,255,255,.87)',
-        },
-      },
+      500: '#1E3A8A', // Base dark blue
+      600: '#1E40AF', // Slightly darker
+      700: '#1E4ED8', // Deep blue
+      800: '#1E40AF', // Rich navy
+      900: '#172554', // Darkest blue
     },
   },
 })
+
+// Theme selection utility
+export const getThemePreset = (themeName = 'blue') => {
+  switch (themeName) {
+    case 'blue':
+    default:
+      return FlashcardTheme
+  }
+}
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -90,15 +65,25 @@ export const appConfig: ApplicationConfig = {
     provideAnimationsAsync(),
     providePrimeNG({
       theme: {
-        preset: Aura,
+        preset: FlashcardTheme,
         options: {
-          darkModeSelector: '.app-dark-mode',
+          darkModeSelector: '.app-dark',
+          cssLayer: false,
         },
       },
+      ripple: true,
+      inputStyle: 'outlined',
     }),
-    NG_EVENT_PLUGINS,
-    //intercept the request
 
-    ApiConfigService,
+    // Ensure API configuration is initialized before app starts
+    {
+      provide: APP_INITIALIZER,
+      useFactory: (apiConfigService: ApiConfigService) => () => {
+        console.log('🔧 API Configuration initialized', !!apiConfigService)
+        return Promise.resolve()
+      },
+      deps: [ApiConfigService],
+      multi: true,
+    },
   ],
 }

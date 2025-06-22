@@ -1,0 +1,187 @@
+/* Main Container Styles */
+.flashcard-grid-container {
+  @apply flex flex-col h-full w-full overflow-hidden;
+}
+
+.toolbar-container {
+  @apply flex-shrink-0;
+}
+
+.main-content {
+  @apply flex-1 overflow-hidden;
+  transition: all 0.2s;
+}
+
+/* Content Splitter - PrimeNG component styling */
+.content-splitter {
+  @apply h-full w-full;
+}
+
+/* Splitter customization using CSS custom properties */
+:host ::ng-deep .p-splitter {
+  --p-splitter-gutter-background: theme(colors.gray.200);
+  --p-splitter-gutter-handle-background: theme(colors.gray.400);
+  @apply w-full h-full;
+  background: transparent;
+  border: none;
+}
+
+:host ::ng-deep .p-splitter-panel {
+  @apply overflow-hidden flex flex-col min-w-0;
+}
+
+:host ::ng-deep .p-splitter-gutter {
+  background: var(--p-splitter-gutter-background);
+  @apply transition-colors duration-200 border-none cursor-col-resize;
+  width: 6px;
+
+  &:hover {
+    background: color-mix(
+      in srgb,
+      var(--p-splitter-gutter-background) 80%,
+      black
+    );
+  }
+}
+
+:host ::ng-deep .p-splitter-gutter-handle {
+  background: var(--p-splitter-gutter-handle-background);
+  @apply w-full h-full rounded-none;
+}
+
+/* Dark mode using CSS custom properties */
+:host-context(.dark) ::ng-deep .p-splitter {
+  --p-splitter-gutter-background: theme(colors.gray.700);
+  --p-splitter-gutter-handle-background: theme(colors.gray.500);
+}
+
+/* Grid Panel */
+.grid-panel {
+  @apply h-full w-full overflow-hidden flex flex-col min-w-0 p-2;
+}
+
+.grid-container {
+  @apply flex flex-col flex-1 min-h-0 min-w-0 w-full;
+}
+
+.grid-wrapper {
+  @apply flex-1 min-h-0 h-full w-full flex flex-col overflow-hidden min-w-0;
+  min-height: 400px;
+}
+
+.grid-controls {
+  @apply flex-shrink-0 px-4 py-2 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700;
+}
+
+/* Error Message */
+.error-message {
+  @apply mb-3 p-3 bg-red-50 border border-red-300 text-red-700 rounded;
+}
+
+.error-close {
+  @apply ml-2 text-red-800 bg-transparent border-none cursor-pointer font-bold hover:text-red-700;
+}
+
+/* AG Grid Component - Minimal custom styling using theme variables */
+.ag-grid-component {
+  @apply w-full h-full flex-1 min-w-0;
+  min-height: 400px;
+
+  /* Use AG Grid's CSS custom properties for theming */
+  --ag-cell-horizontal-padding: 8px;
+  --ag-row-height: 60px;
+  --ag-header-height: 48px;
+  --ag-list-item-height: 60px;
+
+  &.ag-theme-alpine {
+    @apply h-full w-full;
+    min-height: 400px;
+  }
+}
+
+/* Checkbox column styling using AG Grid's recommended approach */
+.ag-grid-component :global(.checkbox-column-header) {
+  width: 50px !important;
+  max-width: 50px !important;
+  min-width: 50px !important;
+  @apply flex justify-center items-center;
+}
+
+.ag-grid-component :global(.checkbox-column) {
+  width: 50px !important;
+  max-width: 50px !important;
+  min-width: 50px !important;
+  @apply flex justify-center items-center;
+  --ag-cell-horizontal-padding: 4px;
+}
+
+/* Chat Panel */
+.chat-panel {
+  @apply h-full overflow-hidden p-2 flex flex-col;
+  min-width: 350px;
+  width: -webkit-fill-available;
+}
+
+.chat-container {
+  @apply flex-1 bg-white rounded-lg shadow-sm flex flex-col;
+  min-height: 0;
+}
+
+:host-context(.dark) .chat-container,
+:host-context(.app-dark) .chat-container {
+  @apply bg-gray-800 !important;
+}
+
+/* Mode Indicator */
+.mode-indicator {
+  @apply p-3 border-b border-gray-200;
+}
+
+:host-context(.dark) .mode-indicator,
+:host-context(.app-dark) .mode-indicator {
+  @apply border-gray-700 !important;
+}
+
+.mode-indicator-content {
+  @apply text-center;
+}
+
+.mode-label {
+  @apply text-xs font-medium text-gray-500;
+}
+
+:host-context(.dark) .mode-label,
+:host-context(.app-dark) .mode-label {
+  @apply text-gray-400 !important;
+}
+
+.mode-text {
+  @apply mt-1 text-sm font-medium;
+
+  &.mode-edit {
+    @apply text-blue-600;
+  }
+
+  &.mode-generate {
+    @apply text-green-600;
+  }
+}
+
+:host-context(.dark) .mode-text.mode-edit,
+:host-context(.app-dark) .mode-text.mode-edit {
+  @apply text-blue-400 !important;
+}
+
+:host-context(.dark) .mode-text.mode-generate,
+:host-context(.app-dark) .mode-text.mode-generate {
+  @apply text-green-400 !important;
+}
+
+.ai-chat-component {
+  @apply flex-1 flex flex-col;
+  min-height: 0;
+}
+
+.card-list-container {
+  @apply flex flex-col flex-1 h-full overflow-hidden;
+}

@@ -5,7 +5,7 @@ export interface LocalStorageState {
   isCardView: boolean
   hasCompletedTutorial: boolean
   isFirstVisit: boolean
-  flashcardSets: Array<FlashcardSetWithCards>
+  flashcardSets: FlashcardSetWithCards[]
   currentSetId: string | null
 }
 

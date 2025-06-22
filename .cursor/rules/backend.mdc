@@ -10,5 +10,13 @@ EVERYTHING SHOULD BE TYPE CHECK USING THE API FOLDER WHICH HAS THE OPENAPI MODEL
 
 
 - You can @ files here
-[index.ts](mdc:Frontend/src/app/api/index.ts)
-- You can use markdown but dont have to
+[CreateFlashcardDto.ts](mdc:Frontend/src/app/api/models/CreateFlashcardDto.ts)
+[CreateFlashcardDto.ts](mdc:Frontend/src/app/api/models/CreateFlashcardDto.ts)
+[Flashcard.ts](mdc:Frontend/src/app/api/models/Flashcard.ts)
+[FlashcardResponse.ts](mdc:Frontend/src/app/api/models/FlashcardResponse.ts)
+[FlashcardSetWithCards.ts](mdc:Frontend/src/app/api/models/FlashcardSetWithCards.ts)
+[UpdateFlashcardDto.ts](mdc:Frontend/src/app/api/models/UpdateFlashcardDto.ts)
+[UpdateFlashcardSetDto.ts](mdc:Frontend/src/app/api/models/UpdateFlashcardSetDto.ts)
+[OpenAPI.ts](mdc:Frontend/src/app/api/core/OpenAPI.ts)
+
+
